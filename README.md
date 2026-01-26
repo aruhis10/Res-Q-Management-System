@@ -6,6 +6,7 @@ Traditional home care services in urban India often face response times of 2 to 
 We prioritize stabilization over full resolution, securing premises against burst pipes, sparking sockets, and security breaches before they escalate into major property damage.
 
 
+
 Key Features:
 
 --> Hyper-Local Polygon Model: Service zones are divided into 2-3 km "Polygons" to ensure ultra-low latency response. 
@@ -18,7 +19,13 @@ Key Features:
 
 --> Flash Fee Billing: A simplified flat-fee structure for rapid, stress-free transactions during emergencies.
 
+
+
+
 📂 System Architecture & Entities
+
+
+
 The Res-Q database manages a complex ecosystem of stakeholders and assets: 
 
 Users: Urban residents seeking immediate hazard mitigation. 
@@ -29,7 +36,12 @@ Inventory: Managed through a Many-to-Many relationship between Micro-Hubs and Pa
 
 Operations: Admins use a dedicated dashboard for shift allocation and supply chain restocking based on threshold alerts.
 
+
+
+
 🛠 Tech Stack
+
+
 
 Backend: Java (Spring Boot) for high-performance API management and multi-threaded transaction concurrency. 
 
