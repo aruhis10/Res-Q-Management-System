@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280">
+    <title>Res-Q : Field Technician App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .status-slider-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden text-slate-800 flex">
+
+    <div id="auth-container" class="w-full h-full flex items-center justify-center bg-slate-900 absolute z-50">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl w-[400px] fade-in border-t-8 border-yellow-400 text-center">
+            <h1 class="text-3xl font-extrabold text-slate-900 mb-1">RES-Q <span class="text-yellow-500">FIELD</span></h1>
+            <h2 class="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest">Technician Database Access</h2>
+            
+            <div class="space-y-4 mb-6">
+                <input type="number" id="login-id" placeholder="Enter Worker ID" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-yellow-500 outline-none transition-all font-bold text-lg text-center">
+                <input type="password" id="login-password" placeholder="Enter Password" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-yellow-500 outline-none transition-all font-bold text-lg text-center">
+            </div>
+
+            <button onclick="attemptLogin()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl shadow-xl transition-all text-lg flex justify-center items-center">
+                <i data-lucide="log-in" class="mr-2"></i> Access Hub
+            </button>
+        </div>
+    </div>
+
+    <div id="app-container" class="w-full h-full flex hidden">
+        <aside class="w-72 bg-slate-900 text-white flex flex-col shadow-2xl z-10">
+            <div class="p-8 border-b border-slate-800"><h1 class="text-3xl font-extrabold">RES-Q <span class="text-yellow-500 text-xl">FIELD</span></h1></div>
+            
+            <nav class="flex-1 p-6 space-y-3">
+                <button onclick="switchTab('dispatch')" id="btn-dispatch" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl bg-yellow-500 text-slate-900 font-bold shadow-lg transition-all"><i data-lucide="zap"></i><span>Active Job</span></button>
+                <button onclick="switchTab('inventory')" id="btn-inventory" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition-all"><i data-lucide="package"></i><span>Update Inventory</span></button>
+                <button onclick="switchTab('history')" id="btn-history" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition-all"><i data-lucide="history"></i><span>Past History</span></button>
+                <button onclick="location.reload()" class="w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-red-500/20 text-red-400 font-bold transition-all mt-8"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+            </nav>
+
+            <div class="p-6 border-t border-slate-800 bg-slate-950">
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="w-12 h-12 rounded-full bg-yellow-400 flex items-center justify-center text-slate-900 font-black text-xl">W</div>
+                    <div><p id="worker-name" class="text-sm font-bold text-white">Technician</p><p id="worker-role" class="text-[10px] text-yellow-500 font-bold uppercase tracking-tighter">Syncing Profile...</p></div>
+                </div>
+                
+                <p class="text-[10px] font-black text-slate-500 mb-2 uppercase tracking-widest">Work Mode</p>
+                <div class="bg-slate-800 rounded-xl p-1 flex relative cursor-pointer h-12 items-center overflow-hidden border border-slate-700 shadow-inner" onclick="toggleWorkStatus()">
+                    <div id="status-slider" class="absolute left-1 w-[48%] h-[80%] bg-emerald-500 rounded-lg status-slider-transition shadow-md"></div>
+                    <div class="w-1/2 text-center z-10 font-bold text-[10px] text-white">STANDBY</div>
+                    <div class="w-1/2 text-center z-10 font-bold text-[10px] text-slate-400">OFF-SHIFT</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-12 bg-slate-50 relative">
+            
+            <div id="view-dispatch" class="max-w-4xl mx-auto block fade-in">
+                <header class="mb-10 flex justify-between items-end">
+                    <h2 class="text-4xl font-extrabold text-slate-900">Current Assignment</h2>
+                    <button onclick="fetchCurrentJob()" class="flex items-center text-slate-500 hover:text-slate-800 font-bold bg-white border px-4 py-2 rounded-lg shadow-sm">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Sync Hub
+                    </button>
+                </header>
+
+                <div id="active-job-card" class="bg-white rounded-3xl p-10 shadow-xl border-t-8 border-red-500 hidden fade-in"></div>
+                
+                <div id="no-job-card" class="bg-white rounded-3xl p-20 shadow-sm border border-slate-200 text-center flex flex-col items-center justify-center fade-in">
+                    <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-6">
+                        <i id="status-icon" data-lucide="coffee" class="w-12 h-12 text-slate-300"></i>
+                    </div>
+                    <h3 id="status-text" class="text-2xl font-bold text-slate-800">You are on Standby</h3>
+                    <p id="status-subtext" class="text-slate-500 mt-2">Waiting for dispatch from the central hub.</p>
+                </div>
+            </div>
+
+            <div id="view-inventory" class="max-w-5xl mx-auto hidden fade-in">
+                <header class="mb-10 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-4xl font-extrabold text-slate-900">Hub Inventory</h2>
+                        <p class="text-slate-500 font-medium mt-1">Check stock levels and request refills from the Admin.</p>
+                    </div>
+                    <button onclick="fetchHubInventory()" class="flex items-center text-slate-500 hover:text-slate-800 font-bold bg-white border px-4 py-2 rounded-lg shadow-sm">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh Stock
+                    </button>
+                </header>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-500 text-xs uppercase tracking-widest font-bold">
+                                <th class="p-6">Part Name</th>
+                                <th class="p-6">Category</th>
+                                <th class="p-6">Current Stock</th>
+                                <th class="p-4 text-right">Supply Chain</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-tbody" class="text-sm font-medium text-slate-800 divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-history" class="max-w-5xl mx-auto hidden fade-in">
+                <header class="mb-10 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-4xl font-extrabold text-slate-900">Completed Jobs</h2>
+                        <p class="text-slate-500 font-medium mt-1">Your past service records and payment logs.</p>
+                    </div>
+                    <button onclick="fetchHistory()" class="flex items-center text-slate-500 hover:text-slate-800 font-bold bg-white border px-4 py-2 rounded-lg shadow-sm">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh Logs
+                    </button>
+                </header>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-500 text-xs uppercase tracking-widest font-bold">
+                                <th class="p-4 border-b">ReqID</th>
+                                <th class="p-4 border-b">Category</th>
+                                <th class="p-4 border-b">Issue Resolved</th>
+                                <th class="p-4 border-b text-right">Payment Logged</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody" class="text-sm font-medium text-slate-800"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="toast" class="absolute bottom-10 right-10 bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center transform transition-all duration-300 translate-y-20 opacity-0 z-50">
+                <i data-lucide="database" class="text-emerald-400 mr-3"></i><span id="toast-msg" class="font-bold">Sync Success</span>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let currentWorkerId = null;
+        let currentPassword = null;
+        let isStandby = true;
+        let hubInventoryCache = []; 
+        let trackingWorkerRequestId = null; // NEW: Added to track active request state for cancellations
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function switchTab(tabId) {
+            try {
+                ['dispatch', 'inventory', 'history'].forEach(id => {
+                    const view = document.getElementById('view-' + id);
+                    const btn = document.getElementById('btn-' + id);
+                    if (view) view.classList.add('hidden');
+                    if (btn) btn.className = "nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-800 text-slate-400 font-bold transition-all";
+                });
+
+                document.getElementById('view-' + tabId).classList.remove('hidden');
+                document.getElementById('btn-' + tabId).className = "nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl bg-yellow-500 text-slate-900 font-bold shadow-lg transition-all";
+                
+                if(tabId === 'dispatch') fetchCurrentJob();
+                if(tabId === 'inventory') fetchHubInventory();
+                if(tabId === 'history') fetchHistory();
+            } catch (e) { console.error(e); }
+        }
+
+        async function attemptLogin() {
+            const id = document.getElementById('login-id').value;
+            const pass = document.getElementById('login-password').value;
+            
+            if(!id || !pass) return alert("Please enter both Worker ID and Password.");
+            
+            try {
+                const response = await fetch(`http://192.168.41.47:8080/api/worker/login?workerId=${id}&password=${encodeURIComponent(pass)}`);
+                const data = await response.json();
+                
+                if(data.error) return alert(data.error);
+
+                currentWorkerId = id;
+                currentPassword = pass;
+                document.getElementById('worker-name').innerText = data.Name || data.name || "Technician";
+                document.getElementById('worker-role').innerText = data.Pro_Speciality || data.pro_speciality || "Professional";
+                
+                isStandby = (data.AvailabilityStatus === 'Standby' || data.AvailabilityStatus === 'Busy' || data.availabilitystatus === 'Standby');
+                updateToggleUI();
+
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                showToast("Connected to ResQ_DB");
+                fetchCurrentJob(); 
+            } catch (e) { alert("Server Offline. Check Spring Boot!"); }
+        }
+
+        function updateToggleUI() {
+            const slider = document.getElementById('status-slider');
+            if (!slider) return;
+            if (isStandby) {
+                slider.style.left = '4px';
+                slider.style.backgroundColor = '#10b981';
+            } else {
+                slider.style.left = '50%';
+                slider.style.backgroundColor = '#475569';
+            }
+        }
+
+        async function toggleWorkStatus() {
+            const nextStatus = isStandby ? "Off-Shift" : "Standby";
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/worker/status?workerId=${currentWorkerId}&status=${nextStatus}`, { method: 'POST' });
+                const data = await res.json();
+
+                if (data.error) {
+                    alert(data.message); 
+                } else {
+                    isStandby = !isStandby;
+                    updateToggleUI();
+                    showToast("Work Mode: " + nextStatus);
+                    fetchCurrentJob();
+                }
+            } catch (e) { showToast("Sync Error", true); }
+        }
+
+        async function fetchCurrentJob() {
+            try {
+                // Re-verify status with password
+                const profileRes = await fetch(`http://192.168.41.47:8080/api/worker/login?workerId=${currentWorkerId}&password=${encodeURIComponent(currentPassword)}`);
+                const profile = await profileRes.json();
+                const currentStatus = profile.AvailabilityStatus || profile.availabilitystatus;
+
+                const response = await fetch(`http://192.168.41.47:8080/api/worker/job?workerId=${currentWorkerId}`);
+                const jobs = await response.json();
+
+                const activeCard = document.getElementById('active-job-card');
+                const noJobCard = document.getElementById('no-job-card');
+
+                if (jobs && jobs.length > 0) {
+                    const job = jobs[0];
+                    let rid = job.RequestID || job.requestid;
+                    trackingWorkerRequestId = rid; // Track the ID in case it vanishes
+
+                    let issue = job.IssueType || job.issuetype;
+                    let sysStatus = job.DispatchStatus || job.dispatchstatus || job.Status || job.status; 
+                    let custName = job.CustomerName || job.customername || "Customer";
+                    let custPhone = job.CustomerPhone || job.customerphone || "N/A";
+                    let loc = job.SpecificLocation || job.specificlocation || "Registered Address";
+                    let cat = job.Category || job.category || "General";
+                    
+                    let isRework = job.IsWarrantyRework || job.iswarrantyrework || false;
+                    let reworkBadge = isRework ? `<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-[10px] font-black uppercase tracking-widest ml-2 animate-pulse border border-purple-200"><i data-lucide="award" class="inline w-3 h-3 mr-1 mb-0.5"></i>WARRANTY REWORK - FREE</span>` : '';
+
+                    isStandby = true;
+                    updateToggleUI();
+
+                    if (sysStatus === 'JobDone') {
+                        activeCard.innerHTML = `
+                            <div class="text-center p-6 border-t-8 border-yellow-400 bg-white rounded-3xl">
+                                <i data-lucide="wallet" class="w-16 h-16 mx-auto text-yellow-500 mb-4 animate-bounce"></i>
+                                <h3 class="text-3xl font-black text-slate-800 mb-2">Awaiting Payment</h3>
+                                <p class="text-slate-500 font-bold text-lg">Invoice generated for Request #${rid}. ${reworkBadge}</p>
+                                <p class="text-slate-400 mt-4 text-sm bg-slate-50 p-4 rounded-xl">You will automatically return to Standby once ${custName} clears the invoice.</p>
+                                <button onclick="fetchCurrentJob()" class="w-full bg-slate-900 text-white font-bold py-5 rounded-xl mt-8 shadow-xl hover:bg-slate-800 transition-all"><i data-lucide="refresh-cw" class="inline w-5 h-5 mr-2"></i> Check Payment Status</button>
+                            </div>`;
+                    } else {
+                        let actionUI = '';
+                        
+                        if (sysStatus === 'Assigned' || sysStatus === 'Pending') {
+                            actionUI = `
+                                <div class="mt-8 text-center bg-slate-50 p-8 rounded-2xl border border-slate-200 fade-in">
+                                    <i data-lucide="navigation" class="w-12 h-12 mx-auto text-blue-500 mb-4 animate-pulse"></i>
+                                    <h4 class="text-xl font-bold text-slate-800 mb-2">Ready to Deploy?</h4>
+                                    <p class="text-slate-500 text-sm mb-6">Start your journey to notify the customer you are on the way.</p>
+                                    <button onclick="updateJourneyStatus(${rid}, 'EnRoute')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xl py-5 rounded-xl transition-all shadow-xl">
+                                        Start Journey (En Route)
+                                    </button>
+                                    <button onclick="cancelWorkerJob(${rid})" class="w-full mt-4 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl border border-red-200 transition-all shadow-sm">
+                                        Cancel Job (Penalty Applies)
+                                    </button>
+                                </div>`;
+                        } else if (sysStatus === 'EnRoute') {
+                            actionUI = `
+                                <div class="mt-8 text-center bg-blue-50 p-8 rounded-2xl border border-blue-200 fade-in">
+                                    <i data-lucide="map-pin" class="w-12 h-12 mx-auto text-blue-600 mb-4 animate-bounce"></i>
+                                    <h4 class="text-xl font-bold text-blue-900 mb-2">Currently En Route</h4>
+                                    <p class="text-blue-700 text-sm mb-6">Drive safely. Tap below once you reach the destination.</p>
+                                    <button onclick="updateJourneyStatus(${rid}, 'Arrived')" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xl py-5 rounded-xl transition-all shadow-xl">
+                                        Mark as Arrived
+                                    </button>
+                                    <button onclick="cancelWorkerJob(${rid})" class="w-full mt-4 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl border border-red-200 transition-all shadow-sm">
+                                        Cancel Job (Penalty Applies)
+                                    </button>
+                                </div>`;
+                        } else if (sysStatus === 'Arrived') {
+                            const invRes = await fetch(`http://192.168.41.47:8080/api/worker/inventory?workerId=${currentWorkerId}`);
+                            hubInventoryCache = await invRes.json();
+                            
+                            let optionsHtml = hubInventoryCache.map(p => {
+                                let pId = p.PartID || p.partid;
+                                let pName = p.Name || p.name;
+                                let pPrice = p.Price || p.price;
+                                let pQty = p.Quantity || p.quantity;
+                                return `<option value="${pId}">${pName} (₹${pPrice}) - In Stock: ${pQty}</option>`;
+                            }).join('');
+
+                            let reworkNotice = isRework ? `<p class="text-xs text-purple-600 font-bold mb-4 bg-purple-50 p-2 rounded border border-purple-200">This is a free warranty rework. The final bill will automatically compute to ₹0.</p>` : '';
+
+                            actionUI = `
+                                <div class="grid grid-cols-2 gap-6 mt-8 fade-in">
+                                    <div class="border-2 border-slate-100 p-6 rounded-2xl bg-white shadow-sm">
+                                        <h4 class="font-bold text-slate-800 mb-4 flex items-center"><i data-lucide="package" class="w-5 h-5 mr-2 text-blue-500"></i> Hub Inventory</h4>
+                                        <label class="text-xs font-bold text-slate-400 uppercase">Select Part</label>
+                                        <select id="part-id-select" class="w-full mt-1 mb-4 p-3 bg-slate-50 border rounded-xl font-medium outline-none">${optionsHtml}</select>
+                                        <label class="text-xs font-bold text-slate-400 uppercase">Quantity Used</label>
+                                        <input type="number" id="part-qty" value="1" min="1" class="w-full mt-1 mb-6 p-3 bg-slate-50 border rounded-xl font-medium outline-none">
+                                        <button onclick="logPartToReceipt(${rid})" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all shadow-md">Add to Receipt</button>
+                                    </div>
+
+                                    <div class="border-2 border-slate-100 p-6 rounded-2xl bg-slate-50 shadow-sm flex flex-col justify-center items-center text-center">
+                                        <i data-lucide="clock" class="w-12 h-12 text-slate-300 mb-4"></i>
+                                        <h4 class="font-bold text-slate-800 mb-2">Automated Time Tracking</h4>
+                                        <p class="text-xs text-slate-500 mb-4 px-4">Your worked hours will be automatically calculated based on your arrival time.</p>
+                                        ${reworkNotice}
+                                        <button onclick="generateFinalBill(${rid})" class="w-full bg-slate-900 hover:bg-slate-800 text-yellow-400 font-black py-4 rounded-xl transition-all shadow-xl flex justify-center items-center">
+                                            <i data-lucide="check-circle" class="mr-2"></i> End Job & Generate Bill
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        activeCard.innerHTML = `
+                            <div class="flex justify-between items-start mb-6">
+                                <div>
+                                    <span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">LIVE DISPATCH</span>
+                                    ${reworkBadge}
+                                    <h3 class="text-4xl font-black text-slate-800 mt-4 mb-2">${issue}</h3>
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-md text-xs font-bold">${cat}</span>
+                                </div>
+                                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-100 text-right"><p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Request ID</p><p class="text-3xl font-black text-slate-900">#${rid}</p></div>
+                            </div>
+
+                            <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200 mb-6">
+                                <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Customer Details</h4>
+                                <div class="space-y-3">
+                                    <div class="flex items-center text-slate-700 font-bold text-md"><i data-lucide="user" class="w-4 h-4 text-slate-400 mr-3"></i> ${custName}</div>
+                                    <div class="flex items-center text-slate-700 font-bold text-md"><i data-lucide="phone" class="w-4 h-4 text-slate-400 mr-3"></i> ${custPhone}</div>
+                                    <div class="flex items-center text-slate-700 font-bold text-md"><i data-lucide="map-pin" class="w-4 h-4 text-red-500 mr-3"></i> ${loc}</div>
+                                </div>
+                            </div>
+                            
+                            ${actionUI}
+                        `;
+                    }
+                    lucide.createIcons();
+                    activeCard.classList.remove('hidden');
+                    noJobCard.classList.add('hidden');
+                } else {
+                    // NEW: Check if the job we were tracking was just cancelled!
+                    if (trackingWorkerRequestId !== null) {
+                        try {
+                            const cancelRes = await fetch(`http://192.168.41.47:8080/api/check-cancellation?requestId=${trackingWorkerRequestId}`);
+                            const cancelData = await cancelRes.json();
+                            if (cancelData.cancelled) {
+                                let actor = cancelData.CancelledBy || cancelData.cancelledby;
+                                // Only alert if the Customer cancelled it (worker already knows if they did it themselves)
+                                if (actor === 'Customer') {
+                                    alert(`⚠️ Alert: Your assigned Request #${trackingWorkerRequestId} was Cancelled by the Customer. You have been automatically returned to Standby.`);
+                                }
+                            }
+                        } catch(e) {}
+                        trackingWorkerRequestId = null;
+                    }
+
+                    activeCard.classList.add('hidden');
+                    noJobCard.classList.remove('hidden');
+                    if (!isStandby) {
+                        document.getElementById('status-text').innerText = "You are Off-Shift";
+                        document.getElementById('status-subtext').innerText = "Switch to Standby mode to receive new dispatch assignments.";
+                        document.getElementById('status-icon').setAttribute('data-lucide', 'moon');
+                    } else {
+                        document.getElementById('status-text').innerText = "You are on Standby";
+                        document.getElementById('status-subtext').innerText = "Waiting for dispatch from the central hub.";
+                        document.getElementById('status-icon').setAttribute('data-lucide', 'coffee');
+                    }
+                    lucide.createIcons();
+                }
+            } catch (e) { console.error("Sync Failed", e); }
+        }
+
+        async function updateJourneyStatus(reqId, newStatus) {
+            try {
+                await fetch(`http://192.168.41.47:8080/api/worker/dispatch-status?requestId=${reqId}&status=${newStatus}`, { method: 'POST' });
+                showToast("Journey Status Updated to " + newStatus);
+                fetchCurrentJob(); 
+            } catch (e) {
+                showToast("Error updating status", true);
+            }
+        }
+
+        async function cancelWorkerJob(reqId) {
+            const reason = prompt("Please enter the reason for cancelling this assignment:");
+            if (!reason || reason.trim() === "") return showToast("Reason required to cancel.", true);
+            if (!confirm("WARNING: Cancelling will deduct Rs. 100 from your salary. Proceed?")) return;
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/worker/cancel?workerId=${currentWorkerId}&requestId=${reqId}&reason=${encodeURIComponent(reason)}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) alert("Error: " + data.message);
+                else { alert("Penalty Applied. You have been returned to Standby status."); fetchCurrentJob(); }
+            } catch (e) { showToast("Connection failed.", true); }
+        }
+
+        async function fetchHubInventory() {
+            const tbody = document.getElementById('inventory-tbody');
+            tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-slate-400 animate-pulse">Syncing Hub Records...</td></tr>';
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/worker/inventory?workerId=${currentWorkerId}`);
+                const data = await res.json();
+                tbody.innerHTML = '';
+                if(!data || data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-slate-400 italic">No parts found in your Hub.</td></tr>';
+                    return;
+                }
+                data.forEach(p => {
+                    let pId = p.PartID || p.partid;
+                    let qty = p.Quantity || p.quantity;
+                    let stockBadge = qty < 5 ? '<span class="text-red-500 font-black">CRITICAL LOW</span>' : (qty < 15 ? '<span class="text-yellow-600 font-bold">LOW STOCK</span>' : '<span class="text-emerald-500 font-bold">STOCKED</span>');
+                    
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-all">
+                            <td class="p-6 font-bold text-slate-700">${p.Name || p.name}</td>
+                            <td class="p-6"><span class="px-2 py-1 bg-slate-100 text-slate-500 text-[10px] font-bold uppercase rounded">${p.Category || p.category}</span></td>
+                            <td class="p-6">
+                                <div class="font-black text-lg">${qty} <span class="text-[10px] text-slate-400 font-bold">UNITS</span></div>
+                                <div class="text-[10px] uppercase font-black">${stockBadge}</div>
+                            </td>
+                            <td class="p-6 text-right">
+                                <button onclick="requestRestock(${pId})" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2 rounded-lg font-bold text-xs transition-all shadow-sm flex items-center float-right">
+                                    <i data-lucide="arrow-up-circle" class="w-3 h-3 mr-2"></i> Request Restock
+                                </button>
+                            </td>
+                        </tr>`;
+                });
+                lucide.createIcons();
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="p-10 text-center text-red-500 font-bold">Database Sync Error.</td></tr>'; }
+        }
+
+        async function requestRestock(partId) {
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/worker/restock-request?workerId=${currentWorkerId}&partId=${partId}`, { method: 'POST' });
+                const data = await res.json();
+                if(data.success) {
+                    showToast("Restock Request Sent to Admin");
+                } else {
+                    showToast("Failed to send request", true);
+                }
+            } catch (e) { showToast("Connection error", true); }
+        }
+        
+        async function fetchHistory() {
+            const tbody = document.getElementById('history-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-blue-500 font-bold animate-pulse">Querying Past Logs...</td></tr>';
+            try {
+                const response = await fetch(`http://192.168.41.47:8080/api/worker/history?workerId=${currentWorkerId}`);
+                const history = await response.json();
+                tbody.innerHTML = '';
+                if(!history || history.length === 0) return tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400 italic">No completed jobs found.</td></tr>';
+                history.forEach(job => {
+                    let rid = job.RequestID || job.requestid;
+                    let cat = job.Category || job.category || "General";
+                    let issue = job.IssueType || job.issuetype;
+                    let amount = job.Amount || job.amount;
+                    let paymentDisplay = amount !== null ? `<span class="text-emerald-600 font-black">₹${amount}</span>` : `<span class="text-yellow-600 font-bold text-xs bg-yellow-100 px-2 py-1 rounded">Pending Pay</span>`;
+                    tbody.innerHTML += `<tr class="border-b border-slate-100 hover:bg-slate-50"><td class="p-4 font-mono">#${rid}</td><td class="p-4 font-bold">${cat}</td><td class="p-4">${issue}</td><td class="p-4 text-right">${paymentDisplay}</td></tr>`;
+                });
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-red-500 font-bold">Database Sync Error.</td></tr>'; }
+        }
+
+        async function logPartToReceipt(reqId) {
+            const partId = document.getElementById('part-id-select').value;
+            const qty = document.getElementById('part-qty').value;
+            if (!partId || qty <= 0) return showToast("Enter a valid quantity!", true);
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/worker/use-part?workerId=${currentWorkerId}&requestId=${reqId}&partId=${partId}&quantity=${qty}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) showToast(data.message, true);
+                else { showToast("Part Deducted & Logged to Receipt!"); fetchCurrentJob(); }
+            } catch (e) { showToast("Connection Error", true); }
+        }
+
+        async function generateFinalBill(reqId) {
+            if (!confirm("Are you sure you are finished? This will stop the clock and finalize the bill.")) return;
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/worker/generate-bill?requestId=${reqId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) showToast(data.message, true);
+                else { showToast("Bill Generated! Awaiting Customer Payment."); fetchCurrentJob(); }
+            } catch (e) { showToast("Connection Error", true); }
+        }
+
+    </script>
+</body>
+</html>

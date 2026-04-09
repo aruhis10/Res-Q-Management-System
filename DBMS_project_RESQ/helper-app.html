@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280">
+    <title>Res-Q : Support Helper Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden text-slate-800 flex">
+
+    <div id="auth-container" class="w-full h-full flex items-center justify-center bg-slate-900 absolute z-50">
+        <div class="bg-white p-10 rounded-3xl shadow-2xl w-[400px] fade-in border-t-8 border-indigo-500 text-center">
+            <div class="flex justify-center mb-4">
+                <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center"><i data-lucide="headset" class="w-8 h-8 text-indigo-600"></i></div>
+            </div>
+            <h1 class="text-3xl font-extrabold text-slate-900 mb-1">RES-Q <span class="text-indigo-600">SUPPORT</span></h1>
+            <h2 class="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest">Regional Helper Access</h2>
+            
+            <div class="space-y-4 mb-6">
+                <input type="number" id="login-id" placeholder="Enter Helper ID" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold text-lg text-center">
+                <input type="password" id="login-password" placeholder="Enter Password" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-indigo-500 outline-none transition-all font-bold text-lg text-center">
+            </div>
+
+            <button onclick="attemptLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-xl transition-all text-lg flex justify-center items-center">
+                <i data-lucide="log-in" class="mr-2"></i> Access Hub Queue
+            </button>
+        </div>
+    </div>
+
+    <div id="app-container" class="w-full h-full flex hidden">
+        
+        <aside class="w-72 bg-slate-900 text-white flex flex-col shadow-2xl z-10">
+            <div class="p-8 border-b border-slate-800 flex items-center">
+                <i data-lucide="headset" class="w-8 h-8 text-indigo-500 mr-3"></i>
+                <h1 class="text-3xl font-extrabold tracking-tight">RES-Q</h1>
+            </div>
+            
+            <nav class="flex-1 p-6 space-y-3">
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 mt-2">Support Tools</p>
+                <button onclick="switchTab('queue')" id="btn-queue" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl bg-indigo-600 text-white font-bold shadow-lg transition-all"><i data-lucide="inbox"></i><span>Pending Reviews</span></button>
+                <button onclick="location.reload()" class="w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-red-500/20 text-red-400 font-bold transition-all mt-8"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+            </nav>
+
+            <div class="p-6 border-t border-slate-800 bg-slate-950 flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-full bg-indigo-500/20 border border-indigo-500 flex items-center justify-center text-indigo-400 font-black text-xl">H</div>
+                <div><p id="helper-name" class="text-sm font-bold text-white">Support Agent</p><p id="helper-hub" class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest">Regional Hub</p></div>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-12 relative bg-slate-50">
+            
+            <div id="view-queue" class="max-w-5xl mx-auto block fade-in">
+                <header class="mb-10 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-4xl font-extrabold text-slate-900">Warranty Review Queue</h2>
+                        <p class="text-slate-500 font-medium mt-1">Review customer proof and authorize free reworks for your designated Hub.</p>
+                    </div>
+                    <button onclick="fetchQueue()" class="flex items-center text-slate-600 hover:text-slate-900 font-bold bg-white border border-slate-200 px-5 py-3 rounded-xl shadow-sm transition-all">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Sync Queue
+                    </button>
+                </header>
+
+                <div id="queue-container" class="space-y-6">
+                    </div>
+            </div>
+
+            <div id="toast" class="absolute bottom-10 right-10 bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center transform transition-all duration-300 translate-y-20 opacity-0 z-50">
+                <i data-lucide="check-circle" class="text-emerald-400 mr-3"></i><span id="toast-msg" class="font-bold">Command Executed</span>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let currentHelperId = null;
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function switchTab(tabId) {
+            // Setup for future tabs if needed
+            document.getElementById('view-queue').classList.remove('hidden');
+            if(tabId === 'queue') fetchQueue();
+        }
+
+        async function attemptLogin() {
+            const id = document.getElementById('login-id').value;
+            const pass = document.getElementById('login-password').value;
+            
+            if(!id || !pass) return alert("Please enter both Helper ID and Password.");
+            
+            try {
+                const response = await fetch(`http://192.168.41.47:8080/api/helper/login?helperId=${id}&password=${encodeURIComponent(pass)}`);
+                const data = await response.json();
+                
+                if(data.error) return alert(data.error);
+
+                currentHelperId = id;
+                document.getElementById('helper-name').innerText = data.Name || data.name;
+                document.getElementById('helper-hub').innerText = `Hub 0${data.HubID || data.hubid} Region`;
+                
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                showToast("Connected to Regional Hub Queue");
+                fetchQueue(); 
+            } catch (e) { 
+                alert("Server Offline. Check Spring Boot!"); 
+            }
+        }
+
+        async function fetchQueue() {
+            const container = document.getElementById('queue-container');
+            container.innerHTML = '<p class="text-center font-bold text-indigo-500 animate-pulse mt-10">Fetching regional complaints...</p>';
+
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/helper/complaints?helperId=${currentHelperId}`);
+                const complaints = await res.json();
+                container.innerHTML = '';
+
+                if (complaints.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-white rounded-3xl p-16 shadow-sm border border-slate-200 text-center">
+                            <i data-lucide="check-circle" class="w-16 h-16 mx-auto text-slate-200 mb-4"></i>
+                            <h3 class="text-2xl font-bold text-slate-400">Inbox Zero</h3>
+                            <p class="text-slate-400 mt-2">There are no pending warranty reviews for your Hub.</p>
+                        </div>`;
+                    lucide.createIcons();
+                    return;
+                }
+
+                complaints.forEach(c => {
+                    let cId = c.ComplaintID || c.complaintid;
+                    let rId = c.RequestID || c.requestid;
+                    let text = c.ComplaintText || c.complainttext;
+                    let medium = c.ProofMedium || c.proofmedium;
+                    let cName = c.CustomerName || c.customername;
+                    let cPhone = c.CustomerPhone || c.customerphone;
+                    let cEmail = c.CustomerEmail || c.customeremail;
+                    let issue = c.IssueType || c.issuetype;
+
+                    // Determine which contact info to highlight based on customer's choice
+                    let contactHighlight = medium === 'WhatsApp' 
+                        ? `<i data-lucide="phone" class="inline w-4 h-4 mr-1 text-emerald-500"></i> <span class="text-emerald-600">${cPhone}</span>` 
+                        : `<i data-lucide="mail" class="inline w-4 h-4 mr-1 text-blue-500"></i> <span class="text-blue-600">${cEmail}</span>`;
+
+                    container.innerHTML += `
+                        <div class="bg-white rounded-3xl p-8 shadow-sm border border-slate-200 fade-in flex flex-col justify-between">
+                            
+                            <div class="flex justify-between items-start border-b border-slate-100 pb-6 mb-6">
+                                <div>
+                                    <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">ACTION REQUIRED</span>
+                                    <h3 class="text-2xl font-black text-slate-800 mt-3 mb-1">Request #${rId}</h3>
+                                    <p class="text-slate-500 font-bold">${issue}</p>
+                                </div>
+                                <div class="text-right bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Check Proof Via</p>
+                                    <p class="text-lg font-black text-slate-900">${medium.toUpperCase()}</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Customer Details</p>
+                                    <p class="font-bold text-slate-800"><i data-lucide="user" class="inline w-4 h-4 mr-1 text-slate-400"></i> ${cName}</p>
+                                    <p class="font-bold text-slate-800 mt-1">${contactHighlight}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Customer Remarks</p>
+                                    <p class="text-sm font-medium text-slate-600 italic bg-slate-50 p-3 rounded-lg border border-slate-100">"${text}"</p>
+                                </div>
+                            </div>
+
+                            <div class="flex space-x-4 pt-4">
+                                <button onclick="rejectComplaint(${cId})" class="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-4 rounded-xl border border-red-200 transition-all shadow-sm flex justify-center items-center">
+                                    <i data-lucide="x-circle" class="w-5 h-5 mr-2"></i> Reject Claim
+                                </button>
+                                <button onclick="approveComplaint(${cId})" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl transition-all shadow-md flex justify-center items-center">
+                                    <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i> Approve Free Rework
+                                </button>
+                            </div>
+
+                        </div>
+                    `;
+                });
+                lucide.createIcons();
+            } catch (e) { 
+                container.innerHTML = `<div class="bg-red-50 rounded-2xl p-8 border border-red-200 text-center"><i data-lucide="wifi-off" class="w-12 h-12 mx-auto text-red-500 mb-4"></i><h3 class="text-xl font-bold text-red-700">Network Error</h3></div>`;
+                lucide.createIcons();
+            }
+        }
+
+        async function approveComplaint(complaintId) {
+            if(!confirm("Authorize Rework? This will instantly dispatch a technician to the customer for a ₹0 job.")) return;
+            
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/helper/complaint/approve?complaintId=${complaintId}`, { method: 'POST' });
+                const data = await res.json();
+                
+                if(data.success) {
+                    showToast("Rework Authorized & Dispatched!");
+                    fetchQueue();
+                } else {
+                    alert(data.message);
+                }
+            } catch (e) { alert("Network Error"); }
+        }
+
+        async function rejectComplaint(complaintId) {
+            if(!confirm("Reject this claim? The customer will be notified that their warranty claim was denied.")) return;
+            
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/helper/complaint/reject?complaintId=${complaintId}`, { method: 'POST' });
+                const data = await res.json();
+                
+                if(data.success) {
+                    showToast("Claim Rejected.", true);
+                    fetchQueue();
+                } else {
+                    alert(data.message);
+                }
+            } catch (e) { alert("Network Error"); }
+        }
+
+    </script>
+</body>
+</html>

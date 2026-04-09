@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1280">
+    <title>Res-Q : Customer Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden text-slate-800 flex flex-col">
+
+    <div id="auth-container" class="w-full h-full flex items-center justify-center bg-slate-50 absolute z-50 overflow-y-auto py-10">
+        <div class="bg-white p-10 rounded-3xl shadow-xl w-[450px] fade-in border border-slate-200">
+            
+            <div id="login-form" class="block text-center">
+                <h1 class="text-3xl font-extrabold text-blue-600 mb-1">RES-Q</h1>
+                <h2 class="text-xs font-bold text-slate-400 mb-8 uppercase tracking-widest">Customer Portal</h2>
+                
+                <div class="space-y-4 mb-6">
+                    <input type="number" id="login-id" placeholder="Enter User ID" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 outline-none transition-all font-bold text-lg text-center">
+                    <input type="password" id="login-password" placeholder="Enter Password" class="w-full px-5 py-4 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-blue-500 outline-none transition-all font-bold text-lg text-center">
+                </div>
+
+                <button onclick="attemptLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition-all text-lg flex justify-center items-center mb-4">
+                    <i data-lucide="log-in" class="mr-2"></i> Log In
+                </button>
+                <p class="text-sm font-medium text-slate-500">New here? <button onclick="toggleAuthMode()" class="text-blue-600 font-bold hover:underline">Create an Account</button></p>
+            </div>
+
+            <div id="register-form" class="hidden">
+                <div class="text-center mb-6">
+                    <h1 class="text-2xl font-extrabold text-blue-600 mb-1">Join RES-Q</h1>
+                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Register New Household</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Full Name</label>
+                        <input type="text" id="reg-name" placeholder="John Doe" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Email Address</label>
+                        <input type="email" id="reg-email" placeholder="john@example.com" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone Number</label>
+                        <input type="text" id="reg-phone" placeholder="+91-9876543210" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Specific Address / Flat No.</label>
+                        <input type="text" id="reg-address" placeholder="Flat 402, Building B" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nearby Landmark</label>
+                        <input type="text" id="reg-landmark" placeholder="Near Apollo Hospital" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Service Zone</label>
+                        <select id="reg-zone" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-blue-500">
+                            <option value="North Delhi">North Delhi</option>
+                            <option value="South Delhi">South Delhi</option>
+                            <option value="East Delhi">East Delhi</option>
+                            <option value="West Delhi">West Delhi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Create Password</label>
+                        <input type="password" id="reg-password" placeholder="Secure Password" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:border-blue-500">
+                    </div>
+
+                    <button onclick="attemptRegister()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all text-lg flex justify-center items-center mt-6">
+                        <i data-lucide="user-plus" class="mr-2"></i> Complete Sign Up
+                    </button>
+                    <p class="text-sm font-medium text-slate-500 text-center mt-4">Already registered? <button onclick="toggleAuthMode()" class="text-blue-600 font-bold hover:underline">Log In</button></p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="app-container" class="w-full h-full flex hidden">
+        
+        <aside class="w-72 bg-white border-r border-slate-200 flex flex-col z-10">
+            <div class="p-8 border-b border-slate-100"><h1 class="text-3xl font-extrabold text-blue-600">RES-Q</h1></div>
+            
+            <nav class="flex-1 p-6 space-y-3">
+                <button onclick="switchTab('tracker')" id="btn-tracker" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl bg-blue-50 text-blue-700 font-bold transition-all"><i data-lucide="activity"></i><span>My Emergencies</span></button>
+                <button onclick="switchTab('new')" id="btn-new" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-50 text-slate-500 font-bold transition-all"><i data-lucide="plus-circle"></i><span>Log New Issue</span></button>
+                <button onclick="switchTab('history')" id="btn-history" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-50 text-slate-500 font-bold transition-all"><i data-lucide="history"></i><span>My History</span></button>
+                <button onclick="switchTab('complaints')" id="btn-complaints" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-50 text-slate-500 font-bold transition-all"><i data-lucide="message-square"></i><span>Help Center</span></button>
+                
+                <button onclick="switchTab('profile')" id="btn-profile" class="nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-50 text-slate-500 font-bold transition-all"><i data-lucide="user"></i><span>My Profile</span></button>
+                <button onclick="location.reload()" class="w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-red text-red-500 font-bold transition-all mt-8"><i data-lucide="log-out"></i><span>Sign Out</span></button>
+            </nav>
+
+            <div class="p-6 border-t border-slate-100 bg-slate-50 flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-black text-xl"><i data-lucide="user"></i></div>
+                <div><p id="user-name" class="text-sm font-bold text-slate-800">Customer</p><p class="text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Verified User</p></div>
+            </div>
+        </aside>
+
+        <main class="flex-1 overflow-y-auto p-12 relative bg-slate-50">
+            
+            <div id="view-tracker" class="max-w-4xl mx-auto block fade-in">
+                <header class="mb-10 flex justify-between items-end">
+                    <h2 class="text-4xl font-extrabold text-slate-900">Live Tracker</h2>
+                    <button onclick="fetchMyJobs()" class="flex items-center text-slate-500 hover:text-slate-800 font-bold bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm"><i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh</button>
+                </header>
+                <div id="jobs-container" class="space-y-6"></div>
+            </div>
+
+            <div id="view-new" class="max-w-2xl mx-auto hidden fade-in">
+                <header class="mb-10"><h2 class="text-4xl font-extrabold text-slate-900">Request Service</h2><p class="text-slate-500 font-medium mt-2">Our auto-routing engine will find the nearest technician.</p></header>
+                
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                    <label class="text-xs font-bold text-slate-400 uppercase">Describe the Issue</label>
+                    <input type="text" id="new-issue" placeholder="e.g., Sparks coming from main board" class="w-full mt-2 mb-6 p-4 bg-slate-50 border rounded-xl font-medium outline-none focus:border-blue-500 transition-all">
+                    
+                    <label class="text-xs font-bold text-slate-400 uppercase">Category</label>
+                    <select id="new-category" class="w-full mt-2 mb-6 p-4 bg-slate-50 border rounded-xl font-medium outline-none">
+                        <option value="Electrical">Electrical Problem</option>
+                        <option value="Plumbing">Plumbing Leak/Blockage</option>
+                    </select>
+
+                    <label class="text-xs font-bold text-slate-400 uppercase">Confirm Emergency Location</label>
+                    <input type="text" id="new-location" placeholder="e.g., Flat 402, Building B (Leave blank to use registered address)" class="w-full mt-2 mb-8 p-4 bg-slate-50 border rounded-xl font-medium outline-none focus:border-blue-500 transition-all">
+                    
+                    <button onclick="logEmergency()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-lg py-5 rounded-xl transition-all shadow-lg flex justify-center items-center">
+                        <i data-lucide="zap" class="mr-2"></i> Dispatch Technician
+                    </button>
+                </div>
+            </div>
+
+            <div id="view-history" class="max-w-5xl mx-auto hidden fade-in">
+                <header class="mb-10 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-4xl font-extrabold text-slate-900">Service History</h2>
+                        <p class="text-slate-500 font-medium mt-1">Logs of all your previous requests and receipts.</p>
+                    </div>
+                    <button onclick="fetchUserHistory()" class="flex items-center text-slate-500 hover:text-slate-800 font-bold bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Refresh Logs
+                    </button>
+                </header>
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-500 text-xs uppercase tracking-widest font-bold">
+                                <th class="p-6 border-b">ID</th>
+                                <th class="p-6 border-b">Request Details</th>
+                                <th class="p-6 border-b">Technician</th>
+                                <th class="p-6 border-b">Status</th>
+                                <th class="p-6 border-b text-right">Payment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-tbody" class="text-sm font-medium text-slate-800 divide-y divide-slate-50"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-complaints" class="max-w-4xl mx-auto hidden fade-in">
+                <header class="mb-10 flex justify-between items-end">
+                    <div>
+                        <h2 class="text-4xl font-extrabold text-slate-900">Support & Warranty</h2>
+                        <p class="text-slate-500 font-medium mt-1">Report issues within 7 days for a free Help Center-approved rework.</p>
+                    </div>
+                    <button onclick="loadEligibleComplaints(); fetchMyComplaints();" class="flex items-center text-slate-500 hover:text-slate-800 font-bold bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm transition-all">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 mr-2"></i> Sync Complaints
+                    </button>
+                </header>
+
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 mb-10">
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Select Eligible Request</label>
+                            <select id="complaint-request-id" class="w-full mt-2 p-4 bg-slate-50 border rounded-xl font-bold outline-none focus:border-red-500">
+                                <option value="">Select a recent job...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-400 uppercase">Proof Submission Medium</label>
+                            <select id="complaint-medium" class="w-full mt-2 p-4 bg-slate-50 border rounded-xl font-bold outline-none focus:border-red-500">
+                                <option value="WhatsApp">WhatsApp</option>
+                                <option value="Email">Email</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <label class="text-xs font-bold text-slate-400 uppercase">Description of Issue</label>
+                    <textarea id="complaint-text" rows="3" placeholder="Explain what went wrong..." class="w-full mt-2 mb-8 p-4 bg-slate-50 border rounded-xl font-medium outline-none focus:border-red-500 transition-all resize-none"></textarea>
+                    
+                    <button onclick="submitCustomerComplaint()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-lg py-5 rounded-xl transition-all shadow-lg flex justify-center items-center">
+                        <i data-lucide="send" class="mr-2"></i> File Complaint to Help Center
+                    </button>
+                </div>
+
+                <div>
+                    <h3 class="text-2xl font-extrabold text-slate-900 mb-6 flex items-center"><i data-lucide="clipboard-list" class="w-6 h-6 mr-2 text-blue-500"></i> Active Logs</h3>
+                    <div id="complaints-log-container" class="space-y-6">
+                        </div>
+                </div>
+            </div>
+
+            <div id="view-profile" class="max-w-2xl mx-auto hidden fade-in">
+                <header class="mb-10">
+                    <h2 class="text-4xl font-extrabold text-slate-900">My Profile</h2>
+                    <p class="text-slate-500 font-medium mt-1">Update your contact and location details.</p>
+                </header>
+
+                <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                    <div id="profile-warning" class="hidden mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl font-bold text-sm flex items-center">
+                        <i data-lucide="lock" class="w-5 h-5 mr-3 text-red-500"></i>
+                        Profile editing is temporarily locked due to an active emergency or pending payment.
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name (Locked)</label>
+                                <input type="text" id="edit-name" disabled class="w-full mt-1 p-3 bg-slate-100 border border-slate-200 rounded-lg outline-none font-bold text-slate-500 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address (Locked)</label>
+                                <input type="text" id="edit-email" disabled class="w-full mt-1 p-3 bg-slate-100 border border-slate-200 rounded-lg outline-none font-bold text-slate-500 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Phone Number</label>
+                            <input type="text" id="edit-phone" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-blue-500 font-bold text-slate-700 transition-all disabled:opacity-50">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Specific Address / Flat No.</label>
+                            <input type="text" id="edit-address" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-blue-500 font-bold text-slate-700 transition-all disabled:opacity-50">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nearby Landmark</label>
+                            <input type="text" id="edit-landmark" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-blue-500 font-bold text-slate-700 transition-all disabled:opacity-50">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Service Zone</label>
+                            <select id="edit-zone" class="w-full mt-1 p-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:border-blue-500 font-bold text-slate-700 transition-all disabled:opacity-50">
+                                <option value="North Delhi">North Delhi</option>
+                                <option value="South Delhi">South Delhi</option>
+                                <option value="East Delhi">East Delhi</option>
+                                <option value="West Delhi">West Delhi</option>
+                            </select>
+                        </div>
+
+                        <button id="btn-save-profile" onclick="updateProfile()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl shadow-lg transition-all text-lg flex justify-center items-center mt-6 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <i data-lucide="save" class="mr-2"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="rejection-modal" class="hidden absolute inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm fade-in">
+                <div class="bg-white p-10 rounded-3xl shadow-2xl max-w-sm w-full text-center border-t-8 border-red-500">
+                    <div class="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="x-octagon" class="w-10 h-10 text-red-500"></i>
+                    </div>
+                    <h2 class="text-2xl font-black text-slate-800 mb-2">Complaint Rejected</h2>
+                    <p class="text-slate-500 text-sm mb-8 font-medium">Your recent warranty complaint was reviewed by the Support Helper and could not be approved. Please contact the Help Center if you require further assistance.</p>
+                    <button onclick="dismissRejectionModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all shadow-md">Understood</button>
+                </div>
+            </div>
+
+            <div id="toast" class="absolute bottom-10 right-10 bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center transform transition-all duration-300 translate-y-20 opacity-0 z-50">
+                <i data-lucide="check-circle" class="text-emerald-400 mr-3"></i><span id="toast-msg" class="font-bold">Success</span>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        lucide.createIcons();
+        let currentUserId = null;
+        let currentPassword = null; 
+        let trackingRequestId = null; // NEW: Added to track active request state
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 4000);
+        }
+
+        function toggleAuthMode() {
+            const login = document.getElementById('login-form');
+            const reg = document.getElementById('register-form');
+            if (login.classList.contains('hidden')) {
+                login.classList.remove('hidden');
+                reg.classList.add('hidden');
+            } else {
+                login.classList.add('hidden');
+                reg.classList.remove('hidden');
+            }
+        }
+
+        async function attemptRegister() {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value; 
+            const phone = document.getElementById('reg-phone').value;
+            const addr = document.getElementById('reg-address').value;
+            const land = document.getElementById('reg-landmark').value;
+            const zone = document.getElementById('reg-zone').value;
+            const pass = document.getElementById('reg-password').value;
+
+            if(!name || !email || !phone || !addr || !land || !pass) return alert("Please fill in all details including password.");
+
+            try {
+                const response = await fetch(`http://192.168.41.47:8080/api/user/register?name=${name}&email=${email}&phone=${phone}&address=${addr}&landmark=${land}&zone=${zone}&password=${encodeURIComponent(pass)}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if(data.error) return alert("Registration Failed! " + data.message);
+
+                currentUserId = data.userId;
+                currentPassword = pass;
+                document.getElementById('user-name').innerText = name;
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                alert(`Account Created! Your unique User ID is: ${currentUserId}. Keep this for future logins.`);
+                fetchMyJobs();
+
+            } catch (e) { alert("Server Offline!"); }
+        }
+
+        function switchTab(tabId) {
+            document.getElementById('view-tracker').classList.add('hidden');
+            document.getElementById('view-new').classList.add('hidden');
+            document.getElementById('view-history').classList.add('hidden');
+            document.getElementById('view-profile').classList.add('hidden');
+            document.getElementById('view-complaints').classList.add('hidden');
+
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+
+            const inactive = "nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl hover:bg-slate-50 text-slate-500 font-bold transition-all";
+            document.getElementById('btn-tracker').className = inactive;
+            document.getElementById('btn-new').className = inactive;
+            document.getElementById('btn-history').className = inactive;
+            document.getElementById('btn-profile').className = inactive;
+            document.getElementById('btn-complaints').className = inactive; 
+            
+            document.getElementById('btn-' + tabId).className = "nav-btn w-full flex items-center space-x-4 px-5 py-4 rounded-xl bg-blue-50 text-blue-700 font-bold transition-all";
+            
+            if(tabId === 'tracker') fetchMyJobs();
+            if(tabId === 'history') fetchUserHistory();
+            if(tabId === 'profile') loadProfileData();
+            if(tabId === 'complaints') {
+                loadEligibleComplaints(); 
+                fetchMyComplaints(); 
+            }
+        }
+
+        async function attemptLogin() {
+            const id = document.getElementById('login-id').value;
+            const pass = document.getElementById('login-password').value; 
+            
+            if(!id || !pass) return alert("Please enter both User ID and Password");
+            
+            try {
+                const response = await fetch(`http://192.168.41.47:8080/api/user/login?userId=${id}&password=${encodeURIComponent(pass)}`);
+                
+                if (!response.ok) {
+                    alert(`Server returned Error ${response.status}! Check the F12 Console.`);
+                    return;
+                }
+
+                const data = await response.json();
+                if(data.error) return alert(data.error); 
+
+                currentUserId = id;
+                currentPassword = pass;
+                document.getElementById('user-name').innerText = data.Name || data.name;
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                fetchMyJobs(); 
+            } catch (e) { 
+                alert("Server Offline!"); 
+            }
+        }
+
+        async function logEmergency() {
+            const issue = document.getElementById('new-issue').value;
+            const cat = document.getElementById('new-category').value;
+            const loc = document.getElementById('new-location').value || "Registered Address";
+
+            if(!issue) return showToast("Please describe the issue!", true);
+
+            try {
+                await fetch(`http://192.168.41.47:8080/api/user/emergency?userId=${currentUserId}&issue=${issue}&category=${cat}&location=${loc}`, { method: 'POST' });
+                showToast("Emergency Logged! Auto-Routing...");
+                document.getElementById('new-issue').value = '';
+                document.getElementById('new-location').value = '';
+                switchTab('tracker');
+            } catch (e) { showToast("Error connecting to server", true); }
+        }
+
+        async function fetchMyJobs() {
+            const container = document.getElementById('jobs-container');
+            container.innerHTML = '<p class="text-center font-bold text-blue-500 animate-pulse mt-10">Syncing with Central Hub...</p>';
+
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/jobs?userId=${currentUserId}`);
+                if (!res.ok) throw new Error(`Server returned HTTP ${res.status}`); 
+                const jobs = await res.json();
+                container.innerHTML = '';
+
+                if(jobs.length === 0) {
+                    // NEW: Check if the job we were tracking was just cancelled!
+                    if (trackingRequestId !== null) {
+                        try {
+                            const cancelRes = await fetch(`http://192.168.41.47:8080/api/check-cancellation?requestId=${trackingRequestId}`);
+                            const cancelData = await cancelRes.json();
+                            if (cancelData.cancelled) {
+                                let actor = cancelData.CancelledBy || cancelData.cancelledby;
+                                alert(`⚠️ Alert: Request #${trackingRequestId} was Cancelled by ${actor}.`);
+                            }
+                        } catch(e) {}
+                        trackingRequestId = null;
+                    }
+
+                    container.innerHTML = `
+                        <div class="bg-white rounded-3xl p-16 shadow-sm border border-slate-200 text-center">
+                            <i data-lucide="shield-check" class="w-16 h-16 mx-auto text-slate-200 mb-4"></i>
+                            <h3 class="text-2xl font-bold text-slate-400">All Clear</h3>
+                            <p class="text-slate-400 mt-2">You have no active emergencies.</p>
+                        </div>`;
+                    lucide.createIcons();
+                    return;
+                }
+
+                jobs.forEach(job => {
+                    let rid = job.RequestID || job.requestid;
+                    trackingRequestId = rid; // Store the ID we are tracking
+
+                    let issue = job.IssueType || job.issuetype;
+                    let cat = job.Category || job.category;
+                    let dispatchStatus = job.DispatchStatus || job.dispatchstatus;
+                    let amount = (job.Amount !== undefined && job.Amount !== null) ? job.Amount : (job.amount ?? 0);
+
+                    if (dispatchStatus === 'JobDone' && amount !== undefined && amount !== null) {
+                        container.innerHTML += `
+                            <div class="bg-white rounded-3xl p-8 shadow-xl border-t-8 border-emerald-500 fade-in relative overflow-hidden">
+                                <div class="absolute -right-10 -top-10 opacity-5"><i data-lucide="receipt" class="w-64 h-64 text-slate-900"></i></div>
+                                <span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest">JOB COMPLETED - INVOICE DUE</span>
+                                <h3 class="text-3xl font-black text-slate-800 mt-4 mb-1">${issue}</h3>
+                                <p class="text-slate-500 font-medium mb-6 text-sm">Request #${rid} • Final Bill Generated</p>
+                                
+                                <div class="bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-6 flex justify-between items-center">
+                                    <div><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Amount Due</p><p class="text-4xl font-black text-slate-900 mt-1">₹${amount}</p></div>
+                                    <i data-lucide="credit-card" class="w-10 h-10 text-slate-300"></i>
+                                </div>
+
+                                <label class="text-xs font-bold text-slate-400 uppercase">Confirm Amount to Pay</label>
+                                <div class="flex space-x-4 mt-2">
+                                    <input type="number" id="pay-input-${rid}" placeholder="Enter exactly ${amount}" class="flex-1 p-4 bg-white border border-slate-300 rounded-xl font-bold text-lg outline-none focus:border-emerald-500 transition-all">
+                                    <button onclick="payBill(${rid}, ${amount})" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 rounded-xl transition-all shadow-md flex justify-center items-center">Pay Securely</button>
+                                </div>
+                            </div>
+                        `;
+                    } 
+                    else {
+                        let statusColor = "bg-slate-100 text-slate-600";
+                        let statusText = "Waiting for technician to be assigned";
+                        let workerDetails = "";
+
+                        if (dispatchStatus) {
+                            if (dispatchStatus === 'Assigned') {
+                                statusText = "Technician is about to leave";
+                                statusColor = "bg-blue-100 text-blue-700";
+                            } else if (dispatchStatus === 'EnRoute') {
+                                statusText = "Technician is on the way";
+                                statusColor = "bg-indigo-100 text-indigo-700";
+                            } else if (dispatchStatus === 'Arrived') {
+                                statusText = "Technician arrived";
+                                statusColor = "bg-emerald-100 text-emerald-700";
+                            }
+
+                            let wName = job.WorkerName || job.workerName || job.workername || "System Dispatching";
+                            let wPhone = job.WorkerPhone || job.workerPhone || job.workerphone || "N/A";
+                            let wHub = job.HubLocation || job.hubLocation || job.hublocation || "Nearest Res-Q Hub";
+
+                            workerDetails = `
+                                <div class="mt-6 p-6 bg-slate-50 border border-slate-200 rounded-2xl">
+                                    <h4 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Assigned Technician Details</h4>
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold text-xl"><i data-lucide="user"></i></div>
+                                        <div>
+                                            <p class="font-black text-xl text-slate-900 leading-none">${wName}</p>
+                                            <div class="flex flex-col sm:flex-row sm:space-x-6 mt-2">
+                                                <p class="text-sm font-medium text-slate-600 flex items-center mt-1 sm:mt-0"><i data-lucide="phone" class="w-4 h-4 mr-2 text-slate-400"></i> ${wPhone}</p>
+                                                <p class="text-sm font-medium text-slate-600 flex items-center mt-1 sm:mt-0"><i data-lucide="building" class="w-4 h-4 mr-2 text-slate-400"></i> Hub: ${wHub}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        container.innerHTML += `
+                            <div class="bg-white rounded-3xl p-8 shadow-sm border border-slate-200 fade-in">
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <span class="px-4 py-2 ${statusColor} rounded-full text-[10px] font-black uppercase tracking-widest flex items-center shadow-sm max-w-fit">
+                                            ${!dispatchStatus ? '<i data-lucide="loader-2" class="w-4 h-4 mr-2 animate-spin"></i>' : '<i data-lucide="zap" class="w-4 h-4 mr-2 animate-pulse"></i>'}
+                                            ${statusText}
+                                        </span>
+                                        <h3 class="text-3xl font-black text-slate-800 mt-4 mb-2">${issue}</h3>
+                                        <p class="text-slate-500 font-medium text-sm flex items-center"><i data-lucide="tag" class="w-4 h-4 mr-2"></i> ${cat} Department • Request #${rid}</p>
+                                    </div>
+                                    <button onclick="cancelRequest(${rid})" class="bg-red-50 hover:bg-red-100 text-red-600 font-bold px-4 py-2 rounded-xl border border-red-200 transition-all flex items-center text-sm shadow-sm">
+                                        <i data-lucide="x-circle" class="w-4 h-4 mr-2"></i> Cancel Request
+                                    </button>
+                                </div>
+                                ${workerDetails}
+                            </div>
+                        `;
+                    }
+                });
+                lucide.createIcons();
+            } catch (e) { 
+                container.innerHTML = `<div class="bg-red-50 rounded-2xl p-8 border border-red-200 text-center"><i data-lucide="wifi-off" class="w-12 h-12 mx-auto text-red-500 mb-4"></i><h3 class="text-xl font-bold text-red-700">Network Error</h3></div>`;
+                lucide.createIcons();
+            }
+        }
+
+        async function fetchUserHistory() {
+            const tbody = document.getElementById('history-tbody');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-blue-500 font-bold animate-pulse">Retrieving archived records...</td></tr>';
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/history?userId=${currentUserId}`);
+                const history = await res.json();
+                tbody.innerHTML = '';
+                if (!history || history.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-slate-400 italic font-medium">No past request logs found.</td></tr>';
+                    return;
+                }
+                history.forEach(item => {
+                    let rid = item.RequestID || item.requestid;
+                    let issue = item.IssueType || item.issuetype;
+                    let cat = item.Category || item.category;
+                    let status = item.Status || item.status;
+                    let tech = item.WorkerName || item.workername || "System Cancelled";
+                    let amt = item.Amount || item.amount;
+                    let statusBadge = status === 'Completed' 
+                        ? `<span class="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-[10px] font-black uppercase">COMPLETED</span>`
+                        : `<span class="px-2 py-1 bg-slate-100 text-slate-500 rounded text-[10px] font-black uppercase">CANCELLED</span>`;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition-all">
+                            <td class="p-6 font-mono text-slate-400">#${rid}</td>
+                            <td class="p-6">
+                                <div class="font-bold text-slate-800">${issue}</div>
+                                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-tight">${cat}</div>
+                            </td>
+                            <td class="p-6 text-slate-600 font-medium">${tech}</td>
+                            <td class="p-6">${statusBadge}</td>
+                            <td class="p-6 text-right font-black text-slate-900">${amt !== null ? '₹' + amt : '-'}</td>
+                        </tr>`;
+                });
+            } catch (e) { tbody.innerHTML = '<tr><td colspan="5" class="p-10 text-center text-red-500">Database connection error.</td></tr>'; }
+        }
+
+        async function cancelRequest(reqId) {
+            if (!confirm("Are you sure you want to cancel this emergency request?")) return;
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/cancel?requestId=${reqId}&userId=${currentUserId}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) showToast(data.message, true);
+                else { showToast("Request Cancelled Successfully."); fetchMyJobs(); }
+            } catch (e) { showToast("Server Error during cancellation", true); }
+        }
+
+        async function payBill(reqId, expectedAmount) {
+            const inputField = document.getElementById(`pay-input-${reqId}`);
+            const entered = Number(inputField.value);
+            const expected = Number(expectedAmount);
+            
+            if (isNaN(entered) || entered !== expected) {
+                return showToast(`Incorrect amount! Please enter EXACTLY ₹${expected}`, true);
+            }
+
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/pay?requestId=${reqId}&amount=${entered}`, { method: 'POST' });
+                const data = await res.json();
+                if (data.error) {
+                    showToast(data.error, true);
+                } else {
+                    showToast("Rework Complete! Request Archived.");
+                    fetchMyJobs(); 
+                }
+            } catch (e) { showToast("Payment Gateway Error", true); }
+        }
+
+        async function loadProfileData() {
+            try {
+                const response = await fetch(`http://192.168.41.47:8080/api/user/login?userId=${currentUserId}&password=${encodeURIComponent(currentPassword)}`);
+                const data = await response.json();
+                
+                document.getElementById('edit-name').value = data.Name || data.name;
+                document.getElementById('edit-email').value = data.Email || data.email;
+                document.getElementById('edit-phone').value = data.Phone || data.phone;
+                document.getElementById('edit-address').value = data.Address || data.address;
+                document.getElementById('edit-landmark').value = data.Landmark || data.landmark;
+                
+                const zone = data.Zone || data.zone;
+                if(zone) document.getElementById('edit-zone').value = zone;
+                
+                const jobsRes = await fetch(`http://192.168.41.47:8080/api/user/jobs?userId=${currentUserId}`);
+                const jobs = await jobsRes.json();
+                const isLocked = jobs.length > 0;
+                
+                const warning = document.getElementById('profile-warning');
+                if (isLocked) warning.classList.remove('hidden');
+                else warning.classList.add('hidden');
+
+                ['edit-phone', 'edit-address', 'edit-landmark', 'edit-zone', 'btn-save-profile'].forEach(id => {
+                    document.getElementById(id).disabled = isLocked;
+                });
+
+            } catch (e) { console.error("Failed to load profile data:", e); }
+        }
+
+        async function updateProfile() {
+            const phone = document.getElementById('edit-phone').value;
+            const address = document.getElementById('edit-address').value;
+            const landmark = document.getElementById('edit-landmark').value;
+            const zone = document.getElementById('edit-zone').value;
+
+            if(!phone || !address) return showToast("Please fill out all editable fields.", true);
+
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/update?userId=${currentUserId}&phone=${phone}&address=${address}&landmark=${landmark}&zone=${zone}`, { method: 'POST' });
+                const data = await res.json();
+                if(data.error) alert(data.message); 
+                else showToast("Profile Updated Successfully!");
+            } catch (e) { alert("Network Error"); }
+        }
+
+        async function loadEligibleComplaints() {
+            const select = document.getElementById('complaint-request-id');
+            select.innerHTML = '<option value="">Loading eligible jobs...</option>';
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/eligible-complaints?userId=${currentUserId}`);
+                const jobs = await res.json();
+                if(jobs.length === 0) {
+                    select.innerHTML = '<option disabled>No jobs eligible for complaint (Max 7 days)</option>';
+                    return;
+                }
+                select.innerHTML = `<option value="">Select a recent request</option>` + 
+                    jobs.map(j => `<option value="${j.RequestID}">${j.IssueType} (#${j.RequestID}) - Done by ${j.WorkerName || 'Unknown'}</option>`).join('');
+            } catch (e) {
+                select.innerHTML = '<option disabled>Failed to load jobs from server.</option>';
+            }
+        }
+
+        async function fetchMyComplaints() {
+            const container = document.getElementById('complaints-log-container');
+            container.innerHTML = '<p class="text-slate-400 font-bold animate-pulse">Loading active logs...</p>';
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/my-complaints?userId=${currentUserId}`);
+                const data = await res.json();
+                container.innerHTML = '';
+                
+                if (data.length === 0) {
+                    container.innerHTML = '<div class="bg-slate-100 rounded-2xl p-8 text-center text-slate-400 font-bold">No active complaints filed.</div>';
+                    return;
+                }
+
+                let triggerRejectionModal = false;
+
+                data.forEach(c => {
+                    let cId = c.ComplaintID || c.complaintid;
+                    let rId = c.RequestID || c.requestid;
+                    let text = c.ComplaintText || c.complainttext;
+                    let status = c.Status || c.status;
+                    let medium = c.ProofMedium || c.proofmedium;
+                    let hName = c.HelperName || c.helpername || 'Unassigned';
+                    let hPhone = c.HelperPhone || c.helperphone || 'N/A';
+                    let hEmail = c.HelperEmail || c.helperemail || 'N/A';
+
+                    let statusBadge = '';
+                    let actionBox = '';
+
+                    if (status === 'Pending') {
+                        statusBadge = `<span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse">PENDING REVIEW</span>`;
+                        let contactDetail = medium === 'WhatsApp' ? `<i data-lucide="phone" class="inline w-4 h-4 mr-1"></i> ${hPhone}` : `<i data-lucide="mail" class="inline w-4 h-4 mr-1"></i> ${hEmail}`;
+                        
+                        actionBox = `
+                            <div class="mt-6 p-5 bg-blue-50 border border-blue-200 rounded-2xl text-blue-900 shadow-sm">
+                                <p class="text-xs font-black uppercase tracking-widest text-blue-500 mb-2">Action Required</p>
+                                <p class="text-sm font-bold leading-relaxed">
+                                    PLEASE SEND THE PHOTO AS PROOF FOR THIS COMPLAINT ON <span class="font-black underline">${medium.toUpperCase()}</span> TO YOUR HELPER (${hName}): 
+                                    <br><span class="text-lg text-blue-700 mt-2 block tracking-wider">${contactDetail}</span>
+                                </p>
+                            </div>
+                        `;
+                    } else if (status === 'Approved') {
+                        statusBadge = `<span class="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest">APPROVED - REWORK INITIATED</span>`;
+                    } else if (status === 'Rejected') {
+                        statusBadge = `<span class="px-3 py-1 bg-red-100 text-red-700 rounded-full text-[10px] font-black uppercase tracking-widest">REJECTED BY HELPER</span>`;
+                        if (!sessionStorage.getItem(`rejected_seen_${cId}`)) {
+                            triggerRejectionModal = true;
+                            sessionStorage.setItem(`rejected_seen_${cId}`, 'true');
+                        }
+                    }
+
+                    container.innerHTML += `
+                        <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 fade-in">
+                            <div class="flex justify-between items-start mb-4">
+                                <div>
+                                    ${statusBadge}
+                                    <h4 class="font-bold text-xl text-slate-800 mt-3">Original Request #${rId}</h4>
+                                    <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Handled By: ${hName}</p>
+                                </div>
+                            </div>
+                            <p class="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl italic font-medium">"${text}"</p>
+                            ${actionBox}
+                        </div>
+                    `;
+                });
+                lucide.createIcons();
+
+                if (triggerRejectionModal) {
+                    document.getElementById('rejection-modal').classList.remove('hidden');
+                }
+
+            } catch(e) {
+                container.innerHTML = '<p class="text-red-500 font-bold">Error loading complaint logs.</p>';
+            }
+        }
+
+        async function submitCustomerComplaint() {
+            const reqId = document.getElementById('complaint-request-id').value;
+            const text = document.getElementById('complaint-text').value;
+            const medium = document.getElementById('complaint-medium').value;
+
+            if(!reqId) return showToast("Please select a request.", true);
+            if(!text || text.trim() === "") return showToast("Please describe the issue.", true);
+
+            try {
+                const res = await fetch(`http://192.168.41.47:8080/api/user/complaint?userId=${currentUserId}&requestId=${reqId}&description=${encodeURIComponent(text)}&medium=${medium}`, { method: 'POST' });
+                const data = await res.json();
+                
+                if(data.success) {
+                    showToast("Complaint Filed! Check logs for proof submission instructions.");
+                    document.getElementById('complaint-text').value = '';
+                    fetchMyComplaints(); 
+                    loadEligibleComplaints(); 
+                } else {
+                    showToast(data.message, true);
+                }
+            } catch (e) {
+                showToast("Failed to submit complaint.", true);
+            }
+        }
+
+        function dismissRejectionModal() {
+            document.getElementById('rejection-modal').classList.add('hidden');
+        }
+
+    </script>
+</body>
+</html>
