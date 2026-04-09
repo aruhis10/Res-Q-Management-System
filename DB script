@@ -1,0 +1,893 @@
+DROP DATABASE IF EXISTS ResQ_DB;
+CREATE DATABASE ResQ_DB;
+USE ResQ_DB;
+
+CREATE TABLE POLYGON (
+    PolygonID INT AUTO_INCREMENT PRIMARY KEY,
+    ZoneName VARCHAR(100) NOT NULL,
+    BoundaryCoordinates VARCHAR(255) NOT NULL CHECK (LENGTH(BoundaryCoordinates) > 50)
+);
+
+CREATE TABLE USER (
+    UserID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) UNIQUE NOT NULL CHECK (Email LIKE '%@%'),
+    Phone VARCHAR(15) NOT NULL CHECK (LENGTH(Phone) >= 10),
+    Address VARCHAR(255) DEFAULT NULL,
+    Landmark VARCHAR(255) DEFAULT NULL,
+    Zone VARCHAR(50) DEFAULT NULL,
+    Latitude DECIMAL(10, 8) NOT NULL CHECK (Latitude BETWEEN -90 AND 90),
+    Longitude DECIMAL(10, 8) NOT NULL CHECK (Longitude BETWEEN -180 AND 180),
+    Polygon_ID INT NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL DEFAULT '',
+    FOREIGN KEY (Polygon_ID) REFERENCES POLYGON(PolygonID)
+);
+
+CREATE TABLE MICRO_HUB (
+    HubID INT AUTO_INCREMENT PRIMARY KEY,
+    LocationAddress VARCHAR(255) NOT NULL,
+    Polygon_ID INT UNIQUE NOT NULL, 
+    FOREIGN KEY (Polygon_ID) REFERENCES POLYGON(PolygonID)
+);
+
+CREATE TABLE HELPER (
+    HelperID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Email VARCHAR(100) UNIQUE NOT NULL,
+    Phone VARCHAR(15) UNIQUE NOT NULL,
+    DateOfJoining DATE DEFAULT (CURRENT_DATE),
+    HubID INT NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL DEFAULT '',
+    FOREIGN KEY (HubID) REFERENCES MICRO_HUB(HubID)
+);
+
+CREATE TABLE WORKER (
+    WorkerID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Contact_Number VARCHAR(15) UNIQUE NOT NULL CHECK (LENGTH(Contact_Number) >= 10),
+    Salary DECIMAL(10, 2) NOT NULL CHECK (Salary >= 0),
+    VerificationStatus ENUM('Verified', 'Pending', 'Rejected') DEFAULT 'Pending' NOT NULL,
+    AvailabilityStatus ENUM('Standby', 'Busy', 'Off-Shift') DEFAULT 'Off-Shift' NOT NULL,
+    Pro_Speciality ENUM('Plumbing', 'Electrical') DEFAULT 'Electrical' NOT NULL,
+    HubID INT NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL DEFAULT '',
+    FOREIGN KEY (HubID) REFERENCES MICRO_HUB(HubID)
+);
+
+CREATE TABLE CONTRACT (
+    ContractID INT AUTO_INCREMENT PRIMARY KEY,
+    WorkerID INT UNIQUE NOT NULL,
+    VehicleReg VARCHAR(20) NOT NULL CHECK (LENGTH(VehicleReg) > 6),
+    VehicleModel VARCHAR(100) NOT NULL,
+    CleaningDutyClause BOOLEAN DEFAULT FALSE NOT NULL,
+    FOREIGN KEY (WorkerID) REFERENCES WORKER(WorkerID) ON DELETE CASCADE
+);
+
+CREATE TABLE PART (
+    PartID INT AUTO_INCREMENT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Category VARCHAR(50) NOT NULL,
+    Description VARCHAR(255) NOT NULL, 
+    Price DECIMAL(10, 2) NOT NULL CHECK (Price >= 0)
+);
+
+CREATE TABLE HUB_INVENTORY (
+    HubID INT,
+    PartID INT,
+    Quantity INT DEFAULT 0 CHECK (Quantity >= 0) NOT NULL,
+    PRIMARY KEY (HubID, PartID),
+    FOREIGN KEY (HubID) REFERENCES MICRO_HUB(HubID),
+    FOREIGN KEY (PartID) REFERENCES PART(PartID)
+);
+
+CREATE TABLE EMERGENCY_REQUEST (
+    RequestID INT AUTO_INCREMENT PRIMARY KEY,
+    UserID INT NOT NULL,
+    Timestamp DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    IssueType VARCHAR(100) NOT NULL,
+    Category ENUM('Plumbing', 'Electrical', 'Both') DEFAULT 'Electrical' NOT NULL,
+    SpecificLocation VARCHAR(255) DEFAULT 'Same as registered address',
+    Status ENUM('Pending', 'EnRoute', 'Assigned', 'Completed', 'Cancelled') DEFAULT 'Pending' NOT NULL,
+    IsWarrantyRework BOOLEAN DEFAULT FALSE, 
+    FOREIGN KEY (UserID) REFERENCES USER(UserID) ON DELETE CASCADE
+);
+
+CREATE TABLE DISPATCH_ASSIGNMENT (
+    AssignmentID INT AUTO_INCREMENT PRIMARY KEY,
+    RequestID INT UNIQUE NOT NULL,
+    WorkerID INT NOT NULL,
+    DispatchTime DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    ArrivedTime DATETIME DEFAULT NULL,
+    Status ENUM('EnRoute', 'Arrived', 'Assigned', 'JobDone') DEFAULT 'Assigned' NOT NULL,
+    FOREIGN KEY (RequestID) REFERENCES EMERGENCY_REQUEST(RequestID) ON DELETE CASCADE,
+    FOREIGN KEY (WorkerID) REFERENCES WORKER(WorkerID)
+);
+
+CREATE TABLE REQUEST_PARTS (
+    LogID INT AUTO_INCREMENT PRIMARY KEY,
+    RequestID INT NOT NULL,
+    PartID INT NOT NULL,
+    Quantity INT NOT NULL,
+    Subtotal DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (RequestID) REFERENCES EMERGENCY_REQUEST(RequestID) ON DELETE CASCADE,
+    FOREIGN KEY (PartID) REFERENCES PART(PartID)
+);
+
+CREATE TABLE PAYMENT (
+    PaymentID INT AUTO_INCREMENT PRIMARY KEY,
+    RequestID INT UNIQUE NOT NULL,
+    Amount DECIMAL(10, 2) NOT NULL CHECK (Amount >= 0 AND Amount <= 100000),
+    TransactionStatus ENUM('Pending', 'Success', 'Failed') DEFAULT 'Pending' NOT NULL,
+    FOREIGN KEY (RequestID) REFERENCES EMERGENCY_REQUEST(RequestID) ON DELETE CASCADE
+);
+
+CREATE TABLE CANCELLATION_AUDIT (
+    LogID INT AUTO_INCREMENT PRIMARY KEY,
+    RequestID INT NOT NULL,
+    UserID INT NOT NULL,
+    CancelledBy ENUM('Customer', 'Worker') DEFAULT 'Customer',
+    WorkerID INT DEFAULT NULL,
+    Reason TEXT DEFAULT NULL,
+    CancelDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PenaltyStatus ENUM('Applied', 'Revoked', 'None') DEFAULT 'None'
+);
+
+CREATE TABLE RESTOCK_REQUEST (
+    RequestID INT AUTO_INCREMENT PRIMARY KEY,
+    HubID INT NOT NULL,
+    PartID INT NOT NULL,
+    QuantityRequested INT DEFAULT 50, 
+    Status ENUM('Pending', 'Fulfilled') DEFAULT 'Pending',
+    RequestDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (HubID) REFERENCES MICRO_HUB(HubID),
+    FOREIGN KEY (PartID) REFERENCES PART(PartID)
+);
+
+CREATE TABLE COMPLAINT (
+    ComplaintID INT AUTO_INCREMENT PRIMARY KEY,
+    Role ENUM('Customer', 'Worker') NOT NULL,
+    UserID_or_WorkerID INT NOT NULL, 
+    RequestID INT NOT NULL,
+    ComplaintText TEXT NOT NULL,
+    ProofMedium ENUM('WhatsApp', 'Email', 'None') DEFAULT 'None',
+    Status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    HelperID INT DEFAULT NULL, 
+    FOREIGN KEY (RequestID) REFERENCES EMERGENCY_REQUEST(RequestID) ON DELETE CASCADE,
+    FOREIGN KEY (HelperID) REFERENCES HELPER(HelperID) ON DELETE SET NULL 
+);
+
+CREATE TABLE ADMIN (
+    AdminID INT AUTO_INCREMENT PRIMARY KEY,
+    Username VARCHAR(50) UNIQUE NOT NULL,
+    PasswordHash VARCHAR(255) NOT NULL
+);
+
+CREATE INDEX idx_worker_hub_status ON WORKER(HubID, AvailabilityStatus);
+CREATE INDEX idx_request_timestamp ON EMERGENCY_REQUEST(Timestamp);
+CREATE INDEX idx_request_status ON EMERGENCY_REQUEST(Status);
+CREATE INDEX idx_part_name ON PART(Name);
+CREATE INDEX idx_payment_status ON PAYMENT(TransactionStatus);
+CREATE INDEX idx_dispatch_status ON DISPATCH_ASSIGNMENT(Status);
+
+-- =====================================================
+-- PART 2: VIEWS & SAFE TRIGGERS (CRASH-PROOFED)
+-- =====================================================
+
+CREATE VIEW vw_WorkerMonthlyPay AS
+SELECT 
+    w.WorkerID,
+    w.Name,
+    w.Salary AS BaseSalary,
+    COALESCE(p.PenaltyCount, 0) AS TotalPenalties,
+    (COALESCE(p.PenaltyCount, 0) * 100) AS PenaltyAmount,
+    GREATEST(0, (w.Salary - (COALESCE(p.PenaltyCount, 0) * 100))) AS FinalMonthlyPay
+FROM WORKER w
+LEFT JOIN (
+    SELECT WorkerID, COUNT(*) AS PenaltyCount
+    FROM CANCELLATION_AUDIT
+    WHERE CancelledBy = 'Worker' 
+      AND PenaltyStatus = 'Applied'
+      AND CancelDate >= DATE_ADD('2026-04-04', INTERVAL FLOOR(DATEDIFF(CURRENT_DATE, '2026-04-04')/30)*30 DAY)
+    GROUP BY WorkerID
+) p ON w.WorkerID = p.WorkerID;
+
+DELIMITER //
+
+CREATE TRIGGER trg_worker_before_update
+BEFORE UPDATE ON WORKER
+FOR EACH ROW
+BEGIN
+    IF NEW.AvailabilityStatus = 'Standby' AND NEW.VerificationStatus != 'Verified' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Security Guard: Cannot put an unverified worker on Standby.';
+    END IF;
+    IF OLD.AvailabilityStatus = 'Busy' AND NEW.AvailabilityStatus = 'Off-Shift' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Operations Guard: Technician cannot clock out while actively on a job.';
+    END IF;
+END //
+
+CREATE TRIGGER trg_dispatch_before_insert
+BEFORE INSERT ON DISPATCH_ASSIGNMENT
+FOR EACH ROW
+BEGIN
+    DECLARE current_status VARCHAR(20);
+    SELECT AvailabilityStatus INTO current_status FROM WORKER WHERE WorkerID = NEW.WorkerID;
+    IF current_status != 'Standby' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Dispatch Error: Worker is not on Standby. Cannot assign job.';
+    END IF;
+END //
+
+CREATE TRIGGER trg_request_before_insert
+BEFORE INSERT ON EMERGENCY_REQUEST
+FOR EACH ROW
+BEGIN
+    DECLARE active_requests INT;
+    SELECT COUNT(*) INTO active_requests FROM EMERGENCY_REQUEST WHERE UserID = NEW.UserID AND Status = 'Pending';
+    IF active_requests >= 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Spam Guard: You already have a repair technician on the way!';
+    END IF;
+END //
+
+CREATE TRIGGER trg_user_before_delete
+BEFORE DELETE ON USER
+FOR EACH ROW
+BEGIN
+    DECLARE active_jobs INT;
+    SELECT COUNT(*) INTO active_jobs FROM EMERGENCY_REQUEST WHERE UserID = OLD.UserID AND Status = 'Pending';
+    IF active_jobs > 0 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Fraud Prevention: Cannot delete account with an active emergency request.';
+    END IF;
+END //
+
+DELIMITER ;
+
+-- =====================================================
+-- PART 3: PROCEDURES (CONCURRENCY LOCKS ENGAGED)
+-- =====================================================
+
+DELIMITER //
+
+-- SAFE QUEUE ENGINE: Pulls waiting users without triggering 1442
+CREATE PROCEDURE sp_AssignPendingRequestToWorker(IN p_WorkerID INT)
+BEGIN
+    DECLARE v_PendingRequestID INT DEFAULT NULL;
+    DECLARE v_HubID INT;
+    DECLARE v_Speciality VARCHAR(50);
+    DECLARE v_Avail VARCHAR(20);
+
+    SELECT HubID, Pro_Speciality, AvailabilityStatus INTO v_HubID, v_Speciality, v_Avail 
+    FROM WORKER WHERE WorkerID = p_WorkerID FOR UPDATE;
+
+    IF v_Avail = 'Standby' THEN
+        
+        -- Safely fetch and lock the next ticket in the queue
+        SELECT r.RequestID INTO v_PendingRequestID
+        FROM EMERGENCY_REQUEST r
+        JOIN USER u ON r.UserID = u.UserID
+        JOIN MICRO_HUB mh ON u.Polygon_ID = mh.Polygon_ID
+        WHERE r.Status = 'Pending' 
+          AND r.Category = v_Speciality 
+          AND mh.HubID = v_HubID
+        ORDER BY r.RequestID ASC
+        LIMIT 1
+        FOR UPDATE;
+
+        IF v_PendingRequestID IS NOT NULL THEN
+            INSERT INTO DISPATCH_ASSIGNMENT (RequestID, WorkerID, Status)
+            VALUES (v_PendingRequestID, p_WorkerID, 'Assigned');
+            
+            UPDATE EMERGENCY_REQUEST SET Status = 'Assigned' WHERE RequestID = v_PendingRequestID;
+            UPDATE WORKER SET AvailabilityStatus = 'Busy' WHERE WorkerID = p_WorkerID;
+        END IF;
+    END IF;
+END //
+
+CREATE PROCEDURE sp_UpdateWorkerStatus(IN p_WorkerID INT, IN p_Status VARCHAR(20))
+BEGIN
+    DECLARE v_CurrentStatus VARCHAR(20);
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    
+    START TRANSACTION;
+        SELECT AvailabilityStatus INTO v_CurrentStatus FROM WORKER WHERE WorkerID = p_WorkerID FOR UPDATE;
+        
+        IF v_CurrentStatus = 'Busy' AND p_Status = 'Off-Shift' THEN
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Operations Guard: Technician cannot clock out while actively on a job.';
+        END IF;
+
+        UPDATE WORKER SET AvailabilityStatus = p_Status WHERE WorkerID = p_WorkerID;
+        
+        IF p_Status = 'Standby' THEN
+            CALL sp_AssignPendingRequestToWorker(p_WorkerID);
+        END IF;
+    COMMIT;
+END //
+
+CREATE PROCEDURE sp_UpdateDispatchStatus(IN p_RequestID INT, IN p_Status VARCHAR(20))
+BEGIN
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    
+    START TRANSACTION;
+        IF p_Status = 'Arrived' THEN
+            UPDATE DISPATCH_ASSIGNMENT SET Status = p_Status, ArrivedTime = CURRENT_TIMESTAMP WHERE RequestID = p_RequestID;
+        ELSE
+            UPDATE DISPATCH_ASSIGNMENT SET Status = p_Status WHERE RequestID = p_RequestID;
+        END IF;
+
+        IF p_Status = 'EnRoute' THEN
+            UPDATE EMERGENCY_REQUEST SET Status = 'EnRoute' WHERE RequestID = p_RequestID;
+        END IF;
+    COMMIT;
+END //
+
+-- SAFE PAYMENT PROCESSOR: Closes ticket instantly on success
+CREATE PROCEDURE sp_ProcessPayment(IN p_RequestID INT, IN p_Amount DECIMAL(10,2))
+BEGIN
+    DECLARE v_Rows INT;
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        UPDATE PAYMENT SET TransactionStatus = 'Success' WHERE RequestID = p_RequestID AND Amount = p_Amount AND TransactionStatus = 'Pending';
+        SELECT ROW_COUNT() INTO v_Rows;
+
+        IF v_Rows > 0 THEN
+            UPDATE EMERGENCY_REQUEST SET Status = 'Completed' WHERE RequestID = p_RequestID;
+            COMMIT;
+        ELSE
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Payment Error: Amount mismatch or invalid request.';
+        END IF;
+END //
+
+CREATE PROCEDURE sp_GenerateBill(
+    IN p_RequestID INT
+)
+BEGIN
+    DECLARE v_LaborCost DECIMAL(10,2);
+    DECLARE v_PartsTotal DECIMAL(10,2);
+    DECLARE v_GrandTotal DECIMAL(10,2);
+    DECLARE v_IsRework BOOLEAN DEFAULT FALSE;
+    DECLARE v_ArrivedTime DATETIME;
+    DECLARE v_HoursWorked DECIMAL(10,4);
+    DECLARE v_WorkerID INT;
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    SELECT IsWarrantyRework INTO v_IsRework FROM EMERGENCY_REQUEST WHERE RequestID = p_RequestID;
+    SELECT ArrivedTime INTO v_ArrivedTime FROM DISPATCH_ASSIGNMENT WHERE RequestID = p_RequestID;
+
+    IF v_ArrivedTime IS NULL THEN
+        SET v_HoursWorked = 1.0;
+    ELSE
+        SET v_HoursWorked = TIMESTAMPDIFF(MINUTE, v_ArrivedTime, CURRENT_TIMESTAMP) / 60.0;
+        IF v_HoursWorked < 0.5 THEN SET v_HoursWorked = 0.5; END IF;
+    END IF;
+
+    IF v_IsRework = TRUE THEN
+        SET v_GrandTotal = 0.00;
+    ELSE
+        SET v_LaborCost = v_HoursWorked * 200.00;
+        SELECT COALESCE(SUM(Subtotal), 0) INTO v_PartsTotal FROM REQUEST_PARTS WHERE RequestID = p_RequestID;
+        SET v_GrandTotal = v_LaborCost + v_PartsTotal;
+    END IF;
+
+    START TRANSACTION;
+        IF EXISTS (SELECT 1 FROM PAYMENT WHERE RequestID = p_RequestID) THEN
+            UPDATE PAYMENT SET Amount = v_GrandTotal, TransactionStatus = 'Pending' WHERE RequestID = p_RequestID;
+        ELSE
+            INSERT INTO PAYMENT (RequestID, Amount, TransactionStatus) 
+            VALUES (p_RequestID, v_GrandTotal, 'Pending');
+        END IF;
+
+        -- 1. Mark physical repair as finished
+        UPDATE DISPATCH_ASSIGNMENT SET Status = 'JobDone' WHERE RequestID = p_RequestID;
+
+        -- 2. Free technician instantly so they don't wait for customer payment
+        SELECT WorkerID INTO v_WorkerID FROM DISPATCH_ASSIGNMENT WHERE RequestID = p_RequestID LIMIT 1;
+        IF v_WorkerID IS NOT NULL THEN
+            UPDATE WORKER SET AvailabilityStatus = 'Standby' WHERE WorkerID = v_WorkerID;
+            CALL sp_AssignPendingRequestToWorker(v_WorkerID);
+        END IF;
+
+        -- 3. Auto-clear warranty reworks
+        IF v_GrandTotal = 0.00 THEN
+            UPDATE PAYMENT SET TransactionStatus = 'Success' WHERE RequestID = p_RequestID;
+            UPDATE EMERGENCY_REQUEST SET Status = 'Completed' WHERE RequestID = p_RequestID;
+        END IF;
+    COMMIT;
+END //
+
+CREATE PROCEDURE sp_AddWorker(
+    IN p_Name VARCHAR(100),
+    IN p_Contact VARCHAR(15),
+    IN p_Salary DECIMAL(10,2),
+    IN p_Speciality VARCHAR(50),
+    IN p_HubID INT,
+    IN p_VehicleReg VARCHAR(20),
+    IN p_VehicleModel VARCHAR(100),
+    IN p_CleaningDuty BOOLEAN
+)
+BEGIN
+    DECLARE v_WorkerID INT;
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        INSERT INTO WORKER (Name, Contact_Number, Salary, Pro_Speciality, HubID, AvailabilityStatus, VerificationStatus)
+        VALUES (p_Name, p_Contact, p_Salary, p_Speciality, p_HubID, 'Off-Shift', 'Verified');
+        
+        SET v_WorkerID = LAST_INSERT_ID();
+        
+        UPDATE WORKER SET PasswordHash = SHA2(CONCAT('worker', v_WorkerID), 256) WHERE WorkerID = v_WorkerID;
+
+        INSERT INTO CONTRACT (WorkerID, VehicleReg, VehicleModel, CleaningDutyClause)
+        VALUES (v_WorkerID, p_VehicleReg, p_VehicleModel, p_CleaningDuty);
+    COMMIT;
+END //
+
+CREATE PROCEDURE sp_AutoDispatch(
+    IN p_UserID INT,
+    IN p_IssueType VARCHAR(255),
+    IN p_Category VARCHAR(100),
+    IN p_Location VARCHAR(255)
+)
+BEGIN
+    DECLARE v_RequestID INT;
+    DECLARE v_PolygonID INT;
+    DECLARE v_WorkerID INT;
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    SELECT Polygon_ID INTO v_PolygonID FROM USER WHERE UserID = p_UserID;
+
+    START TRANSACTION;
+        INSERT INTO EMERGENCY_REQUEST (UserID, IssueType, Category, SpecificLocation, Status)
+        VALUES (p_UserID, p_IssueType, p_Category, p_Location, 'Pending');
+        SET v_RequestID = LAST_INSERT_ID();
+
+        SELECT w.WorkerID INTO v_WorkerID
+        FROM WORKER w
+        JOIN MICRO_HUB mh ON w.HubID = mh.HubID
+        WHERE mh.Polygon_ID = v_PolygonID 
+          AND w.Pro_Speciality = p_Category 
+          AND w.AvailabilityStatus = 'Standby'
+        LIMIT 1
+        FOR UPDATE;
+
+        IF v_WorkerID IS NOT NULL THEN
+            INSERT INTO DISPATCH_ASSIGNMENT (RequestID, WorkerID, Status)
+            VALUES (v_RequestID, v_WorkerID, 'Assigned');
+            UPDATE WORKER SET AvailabilityStatus = 'Busy' WHERE WorkerID = v_WorkerID;
+            UPDATE EMERGENCY_REQUEST SET Status = 'Assigned' WHERE RequestID = v_RequestID;
+        END IF;
+    COMMIT;
+END //
+
+CREATE PROCEDURE sp_UsePart(
+    IN p_WorkerID INT,
+    IN p_RequestID INT,
+    IN p_PartID INT,
+    IN p_Quantity INT
+)
+BEGIN
+    DECLARE v_HubID INT;
+    DECLARE v_CurrentStock INT;
+    DECLARE v_PartPrice DECIMAL(10,2);
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    SELECT HubID INTO v_HubID FROM WORKER WHERE WorkerID = p_WorkerID;
+
+    START TRANSACTION;
+        SELECT Quantity INTO v_CurrentStock
+        FROM HUB_INVENTORY
+        WHERE HubID = v_HubID AND PartID = p_PartID
+        FOR UPDATE;
+
+        IF v_CurrentStock IS NULL OR v_CurrentStock < p_Quantity THEN
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Inventory Error: Insufficient stock at your Hub.';
+        ELSE
+            UPDATE HUB_INVENTORY
+            SET Quantity = Quantity - p_Quantity
+            WHERE HubID = v_HubID AND PartID = p_PartID;
+
+            SELECT Price INTO v_PartPrice FROM PART WHERE PartID = p_PartID;
+
+            INSERT INTO REQUEST_PARTS (RequestID, PartID, Quantity, Subtotal)
+            VALUES (p_RequestID, p_PartID, p_Quantity, (v_PartPrice * p_Quantity));
+        END IF;
+    COMMIT;
+END //
+
+CREATE PROCEDURE sp_CancelRequest(
+    IN p_RequestID INT,
+    IN p_UserID INT
+)
+BEGIN
+    DECLARE v_WorkerID INT DEFAULT NULL;
+    DECLARE v_CurrentStatus VARCHAR(20) DEFAULT NULL;
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        SELECT Status INTO v_CurrentStatus
+        FROM EMERGENCY_REQUEST
+        WHERE RequestID = p_RequestID AND UserID = p_UserID
+        LIMIT 1
+        FOR UPDATE;
+
+        IF v_CurrentStatus IN ('Pending', 'Assigned', 'EnRoute') THEN
+            SET v_WorkerID = (SELECT WorkerID FROM DISPATCH_ASSIGNMENT WHERE RequestID = p_RequestID LIMIT 1);
+
+            UPDATE EMERGENCY_REQUEST SET Status = 'Cancelled' WHERE RequestID = p_RequestID;
+
+            INSERT INTO CANCELLATION_AUDIT (RequestID, UserID, CancelledBy, Reason, PenaltyStatus)
+            VALUES (p_RequestID, p_UserID, 'Customer', 'Cancelled by Customer via Portal', 'None');
+
+            IF v_WorkerID IS NOT NULL THEN
+                DELETE FROM DISPATCH_ASSIGNMENT WHERE RequestID = p_RequestID;
+                UPDATE WORKER SET AvailabilityStatus = 'Standby' WHERE WorkerID = v_WorkerID;
+                CALL sp_AssignPendingRequestToWorker(v_WorkerID);
+            END IF;
+            COMMIT;
+        ELSE
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Cancellation Error: Request not found, completed, or technician arrived.';
+        END IF;
+END //
+
+CREATE PROCEDURE sp_WorkerCancelRequest(
+    IN p_RequestID INT,
+    IN p_WorkerID INT,
+    IN p_Reason TEXT
+)
+BEGIN
+    DECLARE v_CurrentStatus VARCHAR(20) DEFAULT NULL;
+    DECLARE v_UserID INT;
+    DECLARE v_IsRework BOOLEAN DEFAULT FALSE;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    
+    START TRANSACTION;
+        SELECT Status INTO v_CurrentStatus 
+        FROM DISPATCH_ASSIGNMENT 
+        WHERE RequestID = p_RequestID AND WorkerID = p_WorkerID 
+        LIMIT 1 
+        FOR UPDATE;
+        
+        IF v_CurrentStatus IN ('Assigned', 'EnRoute') THEN
+            -- Check rework block
+            SELECT UserID, IsWarrantyRework INTO v_UserID, v_IsRework 
+            FROM EMERGENCY_REQUEST 
+            WHERE RequestID = p_RequestID;
+            
+            IF v_IsRework = TRUE THEN
+                ROLLBACK;
+                SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Worker Cancel Error: Cannot cancel a Warranty Rework. You must complete this job.';
+            ELSE
+                UPDATE EMERGENCY_REQUEST SET Status = 'Cancelled' WHERE RequestID = p_RequestID;
+                
+                INSERT INTO CANCELLATION_AUDIT (RequestID, UserID, CancelledBy, WorkerID, Reason, PenaltyStatus) 
+                VALUES (p_RequestID, v_UserID, 'Worker', p_WorkerID, p_Reason, 'Applied');
+                
+                DELETE FROM DISPATCH_ASSIGNMENT WHERE RequestID = p_RequestID;
+                
+                UPDATE WORKER SET AvailabilityStatus = 'Standby' WHERE WorkerID = p_WorkerID;
+                CALL sp_AssignPendingRequestToWorker(p_WorkerID);
+                COMMIT;
+            END IF;
+        ELSE
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Worker Cancel Error: Cannot cancel this job right now.';
+        END IF;
+END //
+
+CREATE PROCEDURE sp_RequestRestock(
+    IN p_WorkerID INT,
+    IN p_PartID INT
+)
+BEGIN
+    DECLARE v_HubID INT;
+    SELECT HubID INTO v_HubID FROM WORKER WHERE WorkerID = p_WorkerID;
+    INSERT INTO RESTOCK_REQUEST (HubID, PartID, Status) VALUES (v_HubID, p_PartID, 'Pending');
+END //
+
+CREATE PROCEDURE sp_FulfillRestock(
+    IN p_RestockRequestID INT,
+    IN p_AddedQuantity INT
+)
+BEGIN
+    DECLARE v_HubID INT;
+    DECLARE v_PartID INT;
+    DECLARE v_Status VARCHAR(20);
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        SELECT HubID, PartID, Status INTO v_HubID, v_PartID, v_Status
+        FROM RESTOCK_REQUEST WHERE RequestID = p_RestockRequestID FOR UPDATE;
+
+        IF v_Status = 'Pending' THEN
+            UPDATE HUB_INVENTORY SET Quantity = Quantity + p_AddedQuantity WHERE HubID = v_HubID AND PartID = v_PartID;
+            UPDATE RESTOCK_REQUEST SET Status = 'Fulfilled' WHERE RequestID = p_RestockRequestID;
+            COMMIT;
+        ELSE
+            ROLLBACK;
+        END IF;
+END //
+
+CREATE PROCEDURE sp_ResolveComplaint(
+    IN p_ComplaintID INT,
+    IN p_ResolutionStatus VARCHAR(20)
+)
+BEGIN
+    DECLARE v_RequestID INT;
+    DECLARE v_Role VARCHAR(20);
+    SELECT RequestID, Role INTO v_RequestID, v_Role FROM COMPLAINT WHERE ComplaintID = p_ComplaintID;
+    UPDATE COMPLAINT SET Status = p_ResolutionStatus WHERE ComplaintID = p_ComplaintID;
+    IF p_ResolutionStatus = 'Approved' AND v_Role = 'Worker' THEN
+        UPDATE CANCELLATION_AUDIT SET PenaltyStatus = 'Revoked' 
+        WHERE RequestID = v_RequestID AND CancelledBy = 'Worker';
+    END IF;
+END //
+
+CREATE PROCEDURE sp_ApproveAndDispatchRework(
+    IN p_ComplaintID INT
+)
+BEGIN
+    DECLARE v_RequestID INT;
+    DECLARE v_UserID INT;
+    DECLARE v_Category VARCHAR(100);
+    DECLARE v_PolygonID INT;
+    DECLARE v_WorkerID INT DEFAULT NULL;
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        SELECT RequestID INTO v_RequestID FROM COMPLAINT WHERE ComplaintID = p_ComplaintID FOR UPDATE;
+        UPDATE COMPLAINT SET Status = 'Approved' WHERE ComplaintID = p_ComplaintID;
+
+        DELETE FROM DISPATCH_ASSIGNMENT WHERE RequestID = v_RequestID;
+        DELETE FROM PAYMENT WHERE RequestID = v_RequestID;
+
+        UPDATE EMERGENCY_REQUEST SET Status = 'Pending', IsWarrantyRework = TRUE WHERE RequestID = v_RequestID;
+
+        SELECT UserID, Category INTO v_UserID, v_Category FROM EMERGENCY_REQUEST WHERE RequestID = v_RequestID;
+        SELECT Polygon_ID INTO v_PolygonID FROM USER WHERE UserID = v_UserID;
+
+        SELECT w.WorkerID INTO v_WorkerID FROM WORKER w JOIN MICRO_HUB mh ON w.HubID = mh.HubID
+        WHERE mh.Polygon_ID = v_PolygonID AND w.Pro_Speciality = v_Category AND w.AvailabilityStatus = 'Standby' LIMIT 1 FOR UPDATE;
+
+        IF v_WorkerID IS NOT NULL THEN
+            INSERT INTO DISPATCH_ASSIGNMENT (RequestID, WorkerID, Status) VALUES (v_RequestID, v_WorkerID, 'Assigned');
+            UPDATE WORKER SET AvailabilityStatus = 'Busy' WHERE WorkerID = v_WorkerID;
+            UPDATE EMERGENCY_REQUEST SET Status = 'Assigned' WHERE RequestID = v_RequestID;
+        END IF;
+    COMMIT;
+END //
+
+CREATE PROCEDURE sp_FileCustomerComplaint(
+    IN p_UserID INT,
+    IN p_RequestID INT,
+    IN p_Text TEXT,
+    IN p_Medium VARCHAR(20)
+)
+BEGIN
+    DECLARE v_HubID INT;
+    DECLARE v_HelperID INT DEFAULT NULL;
+
+    SELECT mh.HubID INTO v_HubID FROM USER u JOIN MICRO_HUB mh ON u.Polygon_ID = mh.Polygon_ID WHERE u.UserID = p_UserID LIMIT 1;
+    SELECT HelperID INTO v_HelperID FROM HELPER WHERE HubID = v_HubID LIMIT 1;
+
+    INSERT INTO COMPLAINT (Role, UserID_or_WorkerID, RequestID, ComplaintText, ProofMedium, Status, HelperID)
+    VALUES ('Customer', p_UserID, p_RequestID, p_Text, p_Medium, 'Pending', v_HelperID);
+END //
+
+DELIMITER ;
+
+-- =====================================================
+-- PART 4: DATA SEEDING (REALISTIC END-STATES)
+-- =====================================================
+
+INSERT INTO POLYGON (ZoneName, BoundaryCoordinates) VALUES 
+('North Delhi Zone', '28.75,77.10; 28.75,77.20; 28.65,77.20; 28.65,77.10; 28.75,77.10'),
+('South Delhi Zone', '28.55,77.15; 28.55,77.25; 28.45,77.25; 28.45,77.15; 28.55,77.15'),
+('West Delhi Zone',  '28.65,77.05; 28.65,77.15; 28.55,77.15; 28.55,77.05; 28.65,77.05');
+
+INSERT INTO USER (Name, Email, Phone, Address, Landmark, Zone, Latitude, Longitude, Polygon_ID) VALUES
+('Aarav Sharma', 'aarav@gmail.com', '9876543210', 'Flat 101, Res-Q Demo Apartments', 'Near Central Metro Station', 'North Delhi', 28.70410000, 77.10250000, 1),
+('Vihaan Gupta', 'vihaan@yahoo.com', '9876543211', 'Flat 202, Res-Q Demo Apartments', 'Near Central Metro Station', 'South Delhi', 28.53550000, 77.19100000, 2),
+('Aditi Singh', 'aditi@outlook.com', '9876543212', 'Flat 303, Res-Q Demo Apartments', 'Near Central Metro Station', 'West Delhi', 28.64530000, 77.12350000, 3);
+
+INSERT INTO MICRO_HUB (LocationAddress, Polygon_ID) VALUES
+('Sector 12 Warehouse, Rohini', 1),
+('GK-2 Main Market Storage', 2),
+('Punjabi Bagh Club Rd Hub', 3);
+
+INSERT INTO HELPER (Name, Email, Phone, HubID) VALUES 
+('Support Agent Amit', 'amit.help@resq.com', '9898980001', 1), 
+('Support Agent Priya', 'priya.help@resq.com', '9898980002', 2), 
+('Support Agent Rahul', 'rahul.help@resq.com', '9898980003', 3); 
+
+INSERT INTO WORKER (Name, Contact_Number, Salary, VerificationStatus, AvailabilityStatus, Pro_Speciality, HubID) VALUES
+('Rajesh Kumar', '9998887771', 25000.00, 'Verified', 'Standby', 'Electrical', 1),
+('Suresh Yadav', '9998887772', 22000.50, 'Verified', 'Standby', 'Electrical', 1),
+('Amit Verma', '9998887773', 28000.00, 'Verified', 'Standby', 'Plumbing', 2),
+('Vikram Singh', '9998887774', 25000.00, 'Verified', 'Off-Shift', 'Electrical', 3);
+
+INSERT INTO CONTRACT (WorkerID, VehicleReg, VehicleModel, CleaningDutyClause) VALUES
+(1, 'DL-01-AB-1234', 'Hero Splendor', TRUE),
+(2, 'DL-02-XY-5678', 'Honda Activa', FALSE),
+(3, 'DL-03-ZZ-9999', 'Bajaj Pulsar', TRUE),
+(4, 'DL-04-QQ-1111', 'TVS Jupiter', FALSE);
+
+INSERT INTO PART (Name, Category, Description, Price) VALUES
+('5A Fuse', 'Electrical', 'Standard 5 Amp Fuse', 20.00),         
+('Tap Washer', 'Plumbing', 'Rubber washer', 10.00),                
+('LED Bulb 9W', 'Electrical', 'Cool Daylight Bulb', 150.00),     
+('PVC Pipe 1m', 'Plumbing', '1 inch diameter pipe', 200.00),     
+('Switch Board', 'Electrical', '4-socket modular board', 450.00);
+
+INSERT INTO HUB_INVENTORY (HubID, PartID, Quantity) VALUES
+(1, 1, 100), (1, 5, 50),  
+(2, 2, 100), (2, 4, 30);  
+
+INSERT INTO EMERGENCY_REQUEST (UserID, IssueType, Category, Status) VALUES
+(1, 'Short Circuit', 'Electrical', 'Completed'),  
+(2, 'Leaking Pipe', 'Plumbing', 'Assigned'),      
+(3, 'Broken Switch', 'Electrical', 'Assigned');   
+
+INSERT INTO DISPATCH_ASSIGNMENT (RequestID, WorkerID, Status) VALUES
+(1, 2, 'JobDone'),   
+(2, 3, 'JobDone'),   
+(3, 1, 'Assigned');  
+
+UPDATE WORKER SET AvailabilityStatus = 'Busy' WHERE WorkerID = 1;
+
+INSERT INTO REQUEST_PARTS (RequestID, PartID, Quantity, Subtotal) VALUES
+(1, 5, 1, 450.00), 
+(1, 1, 2, 40.00),
+(2, 4, 2, 400.00);
+
+UPDATE HUB_INVENTORY SET Quantity = Quantity - 1 WHERE HubID = 1 AND PartID = 5;
+UPDATE HUB_INVENTORY SET Quantity = Quantity - 2 WHERE HubID = 1 AND PartID = 1;
+UPDATE HUB_INVENTORY SET Quantity = Quantity - 2 WHERE HubID = 2 AND PartID = 4;
+
+INSERT INTO PAYMENT (RequestID, Amount, TransactionStatus) VALUES (1, 690.00, 'Success');
+INSERT INTO PAYMENT (RequestID, Amount, TransactionStatus) VALUES (2, 600.00, 'Pending');
+
+SET SQL_SAFE_UPDATES = 0;
+UPDATE USER SET PasswordHash = SHA2(CONCAT('user', UserID), 256);
+UPDATE WORKER SET PasswordHash = SHA2(CONCAT('worker', WorkerID), 256);
+UPDATE HELPER SET PasswordHash = SHA2(CONCAT('helper', HelperID), 256);
+SET SQL_SAFE_UPDATES = 1;
+
+INSERT INTO ADMIN (Username, PasswordHash) VALUES ('admin', SHA2('admin', 256));
+
+ALTER TABLE USER DROP COLUMN Latitude, DROP COLUMN Longitude;
+
+DROP PROCEDURE IF EXISTS sp_RegisterUser;
+
+DELIMITER //
+CREATE PROCEDURE sp_RegisterUser(
+    IN p_Name VARCHAR(100),
+    IN p_Email VARCHAR(100),
+    IN p_Phone VARCHAR(15),
+    IN p_Address VARCHAR(255),
+    IN p_Landmark VARCHAR(255),
+    IN p_Zone VARCHAR(50),
+    IN p_Polygon_ID INT,
+    IN p_RawPassword VARCHAR(255)
+)
+BEGIN
+    INSERT INTO USER (Name, Email, Phone, Address, Landmark, Zone, Polygon_ID, PasswordHash)
+    VALUES (p_Name, p_Email, p_Phone, p_Address, p_Landmark, p_Zone, p_Polygon_ID, SHA2(p_RawPassword, 256));
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS sp_UpdateWorkerStatus;
+
+DELIMITER //
+CREATE PROCEDURE sp_UpdateWorkerStatus(IN p_WorkerID INT, IN p_Status VARCHAR(20))
+BEGIN
+    DECLARE v_CurrentStatus VARCHAR(20);
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+    
+    START TRANSACTION;
+        -- Lock the row and check the current status
+        SELECT AvailabilityStatus INTO v_CurrentStatus FROM WORKER WHERE WorkerID = p_WorkerID FOR UPDATE;
+        
+        -- THE FIX: Block ANY manual UI overrides if the worker is currently Busy
+        IF v_CurrentStatus = 'Busy' THEN
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Action Denied: Cannot manually change status while actively assigned to a job.';
+        END IF;
+
+        -- If they aren't busy, allow the change
+        UPDATE WORKER SET AvailabilityStatus = p_Status WHERE WorkerID = p_WorkerID;
+        
+        -- If they just clocked in, check if there's a line of customers waiting!
+        IF p_Status = 'Standby' THEN
+            CALL sp_AssignPendingRequestToWorker(p_WorkerID);
+        END IF;
+    COMMIT;
+END //
+DELIMITER ;
+
+USE ResQ_DB;
+INSERT INTO ADMIN (Username, PasswordHash) VALUES ('admin1', SHA2('admin1', 256));
+
+DROP PROCEDURE IF EXISTS sp_ApproveAndDispatchRework;
+DROP PROCEDURE IF EXISTS sp_RejectComplaint;
+
+DELIMITER //
+
+-- SAFE APPROVAL PROCEDURE
+CREATE PROCEDURE sp_ApproveAndDispatchRework(
+    IN p_ComplaintID INT
+)
+BEGIN
+    DECLARE v_RequestID INT;
+    DECLARE v_CurrentStatus VARCHAR(20);
+    DECLARE v_UserID INT;
+    DECLARE v_Category VARCHAR(100);
+    DECLARE v_PolygonID INT;
+    DECLARE v_WorkerID INT DEFAULT NULL;
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        -- 1. Lock the complaint and check its current status
+        SELECT RequestID, Status INTO v_RequestID, v_CurrentStatus 
+        FROM COMPLAINT WHERE ComplaintID = p_ComplaintID FOR UPDATE;
+
+        -- 2. The Shield: If someone else already clicked it, abort immediately!
+        IF v_CurrentStatus != 'Pending' THEN
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Collision Prevented: Another Helper has already processed this complaint.';
+        END IF;
+
+        UPDATE COMPLAINT SET Status = 'Approved' WHERE ComplaintID = p_ComplaintID;
+
+        DELETE FROM DISPATCH_ASSIGNMENT WHERE RequestID = v_RequestID;
+        DELETE FROM PAYMENT WHERE RequestID = v_RequestID;
+
+        UPDATE EMERGENCY_REQUEST SET Status = 'Pending', IsWarrantyRework = TRUE WHERE RequestID = v_RequestID;
+
+        SELECT UserID, Category INTO v_UserID, v_Category FROM EMERGENCY_REQUEST WHERE RequestID = v_RequestID;
+        SELECT Polygon_ID INTO v_PolygonID FROM USER WHERE UserID = v_UserID;
+
+        SELECT w.WorkerID INTO v_WorkerID FROM WORKER w JOIN MICRO_HUB mh ON w.HubID = mh.HubID
+        WHERE mh.Polygon_ID = v_PolygonID AND w.Pro_Speciality = v_Category AND w.AvailabilityStatus = 'Standby' LIMIT 1 FOR UPDATE;
+
+        IF v_WorkerID IS NOT NULL THEN
+            INSERT INTO DISPATCH_ASSIGNMENT (RequestID, WorkerID, Status) VALUES (v_RequestID, v_WorkerID, 'Assigned');
+            UPDATE WORKER SET AvailabilityStatus = 'Busy' WHERE WorkerID = v_WorkerID;
+            UPDATE EMERGENCY_REQUEST SET Status = 'Assigned' WHERE RequestID = v_RequestID;
+        END IF;
+    COMMIT;
+END //
+
+CREATE PROCEDURE sp_RejectComplaint(
+    IN p_ComplaintID INT
+)
+BEGIN
+    DECLARE v_CurrentStatus VARCHAR(20);
+    DECLARE exit handler FOR SQLEXCEPTION BEGIN ROLLBACK; RESIGNAL; END;
+
+    START TRANSACTION;
+        -- 1. Lock the complaint
+        SELECT Status INTO v_CurrentStatus FROM COMPLAINT WHERE ComplaintID = p_ComplaintID FOR UPDATE;
+
+        -- 2. The Shield: Abort if already processed
+        IF v_CurrentStatus != 'Pending' THEN
+            ROLLBACK;
+            SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Collision Prevented: Another Helper has already processed this complaint.';
+        END IF;
+
+        UPDATE COMPLAINT SET Status = 'Rejected' WHERE ComplaintID = p_ComplaintID;
+    COMMIT;
+END //
+
+DELIMITER ;
+
+USE ResQ_DB;
+
+INSERT INTO HELPER (Name, Email, Phone, HubID) 
+VALUES ('Support Agent Neha', 'neha.help@resq.com', '9898980004', 1);
+
+UPDATE HELPER 
+SET PasswordHash = SHA2(CONCAT('helper', HelperID), 256) 
+WHERE Email = 'neha.help@resq.com';
